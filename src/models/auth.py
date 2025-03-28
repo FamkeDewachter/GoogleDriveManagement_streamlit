@@ -3,7 +3,7 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import os
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 SCOPES = [
     "https://www.googleapis.com/auth/drive",
@@ -17,13 +17,8 @@ SCOPES = [
 def get_redirect_uri():
     """Determine the correct redirect URI based on environment"""
     if os.getenv("IS_PRODUCTION", "false").lower() == "true":
-        # Get the current URL in production
-        current_url = st.experimental_get_query_params().get("url", [""])[0]
-        if current_url:
-            parsed = urlparse(current_url)
-            return f"{parsed.scheme}://{parsed.netloc}/"
-        return "https://gdrive-management.streamlit.app/"  # Fallback
-    return st.secrets["google"]["redirect_uris"][0]  # Local development
+        return "https://gdrive-management.streamlit.app/"
+    return "http://localhost:8501/"
 
 
 def authenticate_google_drive_web():
@@ -56,13 +51,7 @@ def authenticate_google_drive_web():
             return None, None, None
 
     try:
-        # Use the first redirect URI from secrets
-        if not st.secrets["google"].get("redirect_uris"):
-            st.error("Redirect URI configuration is missing in secrets")
-            return None, None, None
-
-        redirect_uri = st.secrets["google"]["redirect_uris"][0]
-
+        redirect_uri = get_redirect_uri()
         flow = Flow.from_client_config(
             client_config={
                 "web": {
@@ -70,24 +59,17 @@ def authenticate_google_drive_web():
                     "client_secret": st.secrets["google"]["client_secret"],
                     "auth_uri": st.secrets["google"]["auth_uri"],
                     "token_uri": st.secrets["google"]["token_uri"],
-                    "redirect_uris": st.secrets["google"]["redirect_uris"],
+                    "redirect_uris": [redirect_uri],
                 }
             },
             scopes=SCOPES,
             redirect_uri=redirect_uri,
         )
 
-        # Generate auth URL
-        auth_url, _ = flow.authorization_url(prompt="consent")
-
-        # Display login button
-        if st.button("Login with Google"):
-            st.session_state.auth_url = auth_url
-            st.rerun()
-
-        # Handle callback
-        if "code" in st.experimental_get_query_params():
-            code = st.experimental_get_query_params()["code"]
+        # Check for authorization code in query params
+        query_params = st.experimental_get_query_params()
+        if "code" in query_params:
+            code = query_params["code"][0]
             flow.fetch_token(code=code)
             creds = flow.credentials
 
@@ -116,9 +98,32 @@ def authenticate_google_drive_web():
                 "user_name": user_name,
                 "user_email": user_email,
             }
+            st.experimental_set_query_params()  # Clear the code from URL
+            st.rerun()
 
-            drive_service = build("drive", "v3", credentials=creds)
-            return drive_service, user_name, user_email
+        # If not authenticated, show login button
+        if not st.session_state.google_auth["creds"]:
+            auth_url, _ = flow.authorization_url(prompt="consent")
+            if st.button("Login with Google"):
+                st.write(f"Please [click here to authenticate]({auth_url})")
+                # Or use JavaScript redirect
+                # st.markdown(f'<meta http-equiv="refresh" content="0; url={auth_url}">', unsafe_allow_html=True)
+                return None, None, None
+        st.write(f"Redirect URI: {redirect_uri}")
+        st.write(f"Query params: {st.experimental_get_query_params()}")
+
+        # If we have credentials, return them
+        if st.session_state.google_auth["creds"]:
+            drive_service = build(
+                "drive",
+                "v3",
+                credentials=st.session_state.google_auth["creds"],
+            )
+            return (
+                drive_service,
+                st.session_state.google_auth["user_name"],
+                st.session_state.google_auth["user_email"],
+            )
 
         return None, None, None
 
