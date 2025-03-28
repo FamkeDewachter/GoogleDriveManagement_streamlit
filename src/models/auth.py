@@ -77,7 +77,7 @@ def authenticate_google_drive_web():
         st.session_state.google_auth["requested_scopes"] = SCOPES
 
         # Check for authorization code in query params
-        query_params = st.experimental_get_query_params()
+        query_params = st.query_params
         if "code" in query_params:
             code = query_params["code"][0]
             flow.fetch_token(code=code)
@@ -112,7 +112,7 @@ def authenticate_google_drive_web():
                     ),
                 }
             )
-            st.experimental_set_query_params()
+            st.query_params.clear()
             st.rerun()
 
         # If not authenticated, show login button
