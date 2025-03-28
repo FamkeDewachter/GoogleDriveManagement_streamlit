@@ -2,8 +2,6 @@ import streamlit as st
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import os
-from urllib.parse import urlparse, parse_qs
 
 SCOPES = [
     "https://www.googleapis.com/auth/drive",
@@ -44,14 +42,16 @@ def authenticate_google_drive_web():
             return None, None, None
 
     try:
+        # Hardcoded production URI
         redirect_uri = "https://gdrive-management.streamlit.app/"
+
         flow = Flow.from_client_config(
             client_config={
                 "web": {
                     "client_id": st.secrets["google"]["client_id"],
                     "client_secret": st.secrets["google"]["client_secret"],
-                    "auth_uri": st.secrets["google"]["auth_uri"],
-                    "token_uri": st.secrets["google"]["token_uri"],
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
                     "redirect_uris": [redirect_uri],
                 }
             },
@@ -77,45 +77,38 @@ def authenticate_google_drive_web():
                 .execute()
             )
 
-            # Extract user info
-            user_name = profile.get("names", [{}])[0].get(
-                "displayName", "Unknown"
-            )
-            user_email = profile.get("emailAddresses", [{}])[0].get(
-                "value", "unknown"
-            )
-
             # Store in session state
             st.session_state.google_auth = {
                 "creds": creds,
-                "user_name": user_name,
-                "user_email": user_email,
+                "user_name": profile.get("names", [{}])[0].get(
+                    "displayName", "Unknown"
+                ),
+                "user_email": profile.get("emailAddresses", [{}])[0].get(
+                    "value", "unknown"
+                ),
             }
-            st.experimental_set_query_params()  # Clear the code from URL
+            st.experimental_set_query_params()
             st.rerun()
 
         # If not authenticated, show login button
         if not st.session_state.google_auth["creds"]:
-            auth_url, _ = flow.authorization_url(prompt="consent")
+            auth_url, _ = flow.authorization_url(
+                prompt="consent",
+                access_type="offline",
+                include_granted_scopes="true",
+            )
             if st.button("Login with Google"):
-                st.markdown(
-                    f'<meta http-equiv="refresh" content="0; url={auth_url}">',
-                    unsafe_allow_html=True,
-                )
+                # Use JavaScript redirect with a small delay
+                js = f"""
+                <script>
+                    function openAuth() {{
+                        window.open("{auth_url}", "_blank");
+                    }}
+                    setTimeout(openAuth, 100);
+                </script>
+                """
+                st.components.v1.html(js, height=0)
                 return None, None, None
-
-        # If we have credentials, return them
-        if st.session_state.google_auth["creds"]:
-            drive_service = build(
-                "drive",
-                "v3",
-                credentials=st.session_state.google_auth["creds"],
-            )
-            return (
-                drive_service,
-                st.session_state.google_auth["user_name"],
-                st.session_state.google_auth["user_email"],
-            )
 
         return None, None, None
 
