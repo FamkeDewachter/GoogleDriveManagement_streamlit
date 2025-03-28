@@ -1,3 +1,4 @@
+from models.auth import authenticate_google_drive_web
 from controllers.comment_controller import CommentController
 from controllers.version_control_controller import VersionControlController
 from controllers.selection_controller import SelectionController
@@ -6,14 +7,16 @@ import streamlit as st
 
 
 class MainController:
-    def __init__(self, drive_service, user_name, user_email):
+    def __init__(self):
         """
-        Initialize with already-authenticated services
+        Initialize the Main Controller.
         """
-        self.drive_service = drive_service
-        self.user_name = user_name
-        self.user_email = user_email
-
+        self.drive_service, self.user_name, self.user_email = (
+            authenticate_google_drive_web()
+        )
+        if not self.drive_service or not self.user_name:
+            st.error("Please authenticate with Google to continue")
+            return
         # Initialize the Selection Controller first
         self.selection_controller = SelectionController(
             self.drive_service, self.user_name

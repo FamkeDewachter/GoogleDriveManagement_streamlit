@@ -2,6 +2,8 @@ import streamlit as st
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+import os
+from urllib.parse import urlparse
 
 SCOPES = [
     "https://www.googleapis.com/auth/drive",
@@ -11,77 +13,151 @@ SCOPES = [
     "openid",
 ]
 
-# Make callback URL dynamic based on environment
-if st.secrets.get("environment") == "production":
-    CALLBACK_URL = "https://gdrive-management.streamlit.app/oauth-callback"
-else:
-    CALLBACK_URL = "http://localhost:8501/oauth-callback"
+
+def get_redirect_uri():
+    """Determine the correct redirect URI based on environment"""
+    if os.getenv("IS_PRODUCTION", "false").lower() == "true":
+        # Get the current URL in production
+        current_url = st.experimental_get_query_params().get("url", [""])[0]
+        if current_url:
+            parsed = urlparse(current_url)
+            return f"{parsed.scheme}://{parsed.netloc}/"
+        return "https://gdrive-management.streamlit.app/"  # Fallback
+    return st.secrets["google"]["redirect_uris"][0]  # Local development
 
 
-def get_auth_url():
+def authenticate_google_drive_web():
+    # Initialize session state
+    if "google_auth" not in st.session_state:
+        st.session_state.google_auth = {
+            "creds": None,
+            "user_name": None,
+            "user_email": None,
+        }
+
+    # Return cached credentials if valid
+    if (
+        st.session_state.google_auth["creds"]
+        and st.session_state.google_auth["creds"].valid
+    ):
+        try:
+            drive_service = build(
+                "drive",
+                "v3",
+                credentials=st.session_state.google_auth["creds"],
+            )
+            return (
+                drive_service,
+                st.session_state.google_auth["user_name"],
+                st.session_state.google_auth["user_email"],
+            )
+        except HttpError as e:
+            error_details = f"""
+            Google API error while using cached credentials:
+            - Status: {e.status_code}
+            - Reason: {e.error_details if hasattr(e, 'error_details') else 'No details'}
+            - Message: {str(e)}
+            """
+            st.error(f"Google API error: {error_details}")
+            return None, None, None
+
     try:
+        # Check if Google secrets are properly configured
+        if "google" not in st.secrets:
+            st.error(
+                "Google OAuth configuration is missing in Streamlit secrets."
+            )
+            return None, None, None
+
+        if (
+            "redirect_uris" not in st.secrets["google"]
+            or not st.secrets["google"]["redirect_uris"]
+        ):
+            st.error("Redirect URI is missing in Google OAuth configuration.")
+            return None, None, None
+
         flow = Flow.from_client_config(
             client_config=st.secrets["google"],
             scopes=SCOPES,
-            redirect_uri=CALLBACK_URL,
+            redirect_uri=get_redirect_uri(),
         )
-        auth_url, _ = flow.authorization_url(
-            prompt="consent", access_type="offline"
-        )
-        st.session_state["oauth_flow"] = flow
-        return auth_url
+        # Generate auth URL
+        auth_url, _ = flow.authorization_url(prompt="consent")
+
+        # Display login button
+        if st.button("Login with Google"):
+            st.session_state.auth_url = auth_url
+            st.experimental_rerun()
+
+        # Handle callback
+        if "code" in st.experimental_get_query_params():
+            code = st.experimental_get_query_params()["code"]
+
+            try:
+                flow.fetch_token(code=code)
+                creds = flow.credentials
+            except Exception as e:
+                st.error(f"Failed to fetch access token: {str(e)}")
+                return None, None, None
+
+            try:
+                # Get user profile
+                people_service = build("people", "v1", credentials=creds)
+                profile = (
+                    people_service.people()
+                    .get(
+                        resourceName="people/me",
+                        personFields="names,emailAddresses",
+                    )
+                    .execute()
+                )
+
+                # Extract user info
+                user_name = profile.get("names", [{}])[0].get(
+                    "displayName", "Unknown"
+                )
+                user_email = profile.get("emailAddresses", [{}])[0].get(
+                    "value", "unknown"
+                )
+
+                # Store in session state
+                st.session_state.google_auth = {
+                    "creds": creds,
+                    "user_name": user_name,
+                    "user_email": user_email,
+                }
+
+                drive_service = build("drive", "v3", credentials=creds)
+                return drive_service, user_name, user_email
+
+            except HttpError as e:
+                error_details = f"""
+                Google People API error:
+                - Status: {e.status_code}
+                - Reason: {e.error_details if hasattr(e, 'error_details') else 'No details'}
+                - Message: {str(e)}
+                """
+                st.error(f"Failed to get user profile: {error_details}")
+                return None, None, None
+
+            except Exception as e:
+                st.error(
+                    f"Unexpected error while getting user profile: {str(e)}"
+                )
+                return None, None, None
+
+        return None, None, None
+
     except Exception as e:
-        st.error(f"Failed to create auth URL: {e}")
-        return None
+        error_type = type(e).__name__
+        error_details = f"""
+        Authentication failed:
+        - Type: {error_type}
+        - Message: {str(e)}
+        """
 
+        if hasattr(e, "args") and e.args:
+            error_details += f"- Args: {e.args}\n"
 
-def handle_oauth_callback():
-    """Process the OAuth callback and return credentials"""
-    if "oauth_flow" not in st.session_state:
-        raise Exception("No OAuth flow in progress")
-
-    flow = st.session_state["oauth_flow"]
-    query_params = st.query_params
-    code = query_params.get("code")
-    if not code:
-        raise Exception("No authorization code found")
-
-    # Exchange code for tokens
-    creds = flow.fetch_token(code=code)
-
-    # Get user info
-    people_service = build("people", "v1", credentials=creds)
-    profile = (
-        people_service.people()
-        .get(resourceName="people/me", personFields="names,emailAddresses")
-        .execute()
-    )
-
-    return {
-        "creds": creds,
-        "user_name": profile.get("names", [{}])[0].get(
-            "displayName", "Unknown"
-        ),
-        "user_email": profile.get("emailAddresses", [{}])[0].get(
-            "value", "unknown"
-        ),
-    }
-
-
-def check_existing_auth():
-    """Check for valid existing credentials"""
-    if "google_auth" not in st.session_state:
-        return None
-
-    creds = st.session_state.google_auth.get("creds")
-    if creds and creds.valid:
-        try:
-            drive_service = build("drive", "v3", credentials=creds)
-            return {
-                "drive_service": drive_service,
-                "user_name": st.session_state.google_auth["user_name"],
-                "user_email": st.session_state.google_auth["user_email"],
-            }
-        except HttpError as e:
-            st.error(f"Google API error: {e}")
-    return None
+        st.error(f"Authentication error: {error_details}")
+        return None, None, None
