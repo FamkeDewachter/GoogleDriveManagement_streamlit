@@ -27,16 +27,19 @@ class AuthController:
             }
         }
 
-    def get_redirect_uri(self):
-        """Get redirect URI based on environment"""
-        if self.is_production():
-            return st.secrets["google"]["redirect_uri_production"]
-        else:
-            return st.secrets["google"]["redirect_uri_local"]
-
     def is_production(self):
-        """Check if running in production"""
-        return os.getenv("IS_PRODUCTION", "false").lower() == "true"
+        """Auto-detect production by checking if the redirect URI contains 'streamlit.app'"""
+        return (
+            "streamlit.app" in st.secrets["google"]["redirect_uri_production"]
+        )
+
+    def get_redirect_uri(self):
+        """Use production URI if running on Streamlit Cloud, otherwise local"""
+        return (
+            st.secrets["google"]["redirect_uri_production"]
+            if self.is_production()
+            else st.secrets["google"]["redirect_uri_local"]
+        )
 
     def configure_app(self):
         AuthView.configure_page(
