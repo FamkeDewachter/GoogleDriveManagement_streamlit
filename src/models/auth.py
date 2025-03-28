@@ -11,21 +11,28 @@ SCOPES = [
     "openid",
 ]
 
-CALLBACK_URL = "https://gdrive-management.streamlit.app/oauth-callback"
+# Make callback URL dynamic based on environment
+if st.secrets.get("environment") == "production":
+    CALLBACK_URL = "https://gdrive-management.streamlit.app/oauth-callback"
+else:
+    CALLBACK_URL = "http://localhost:8501/oauth-callback"
 
 
 def get_auth_url():
-    """Generate the authorization URL for initial redirect"""
-    flow = Flow.from_client_config(
-        client_config=st.secrets["google"],
-        scopes=SCOPES,
-        redirect_uri=CALLBACK_URL,
-    )
-    auth_url, _ = flow.authorization_url(
-        prompt="consent", access_type="offline"
-    )
-    st.session_state["oauth_flow"] = flow  # Store for callback phase
-    return auth_url
+    try:
+        flow = Flow.from_client_config(
+            client_config=st.secrets["google"],
+            scopes=SCOPES,
+            redirect_uri=CALLBACK_URL,
+        )
+        auth_url, _ = flow.authorization_url(
+            prompt="consent", access_type="offline"
+        )
+        st.session_state["oauth_flow"] = flow
+        return auth_url
+    except Exception as e:
+        st.error(f"Failed to create auth URL: {e}")
+        return None
 
 
 def handle_oauth_callback():
