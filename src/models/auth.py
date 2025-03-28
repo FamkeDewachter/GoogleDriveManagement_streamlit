@@ -23,7 +23,7 @@ def get_redirect_uri():
             parsed = urlparse(current_url)
             return f"{parsed.scheme}://{parsed.netloc}/"
         return "https://gdrive-management.streamlit.app/"  # Fallback
-    return st.secrets["google"]["redirect_uris"][0]  # Local development
+    return st.secrets["google.web"]["redirect_uris"][0]  # Local development
 
 
 def authenticate_google_drive_web():
