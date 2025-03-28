@@ -924,7 +924,8 @@ def gds_get_all_drives(drive_service):
             page_token = response.get("nextPageToken", None)
             if page_token is None:
                 break
-
+        st.write("Debug: Full API response:", response)
+        st.write("Debug: Found drives:", drives)
         return drives
 
     except Exception as e:

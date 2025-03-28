@@ -4,13 +4,13 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-# Define consistent scopes (order matters for comparison)
 SCOPES = [
     "openid",
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive.readonly",  # Add this line
 ]
 
 
@@ -156,6 +156,7 @@ def get_authenticated_service():
             "drive",
             "v3",
             credentials=st.session_state.google_auth["creds"],
+            static_discovery=False,  # Add this parameter
         )
         return (
             drive_service,
