@@ -924,8 +924,6 @@ def gds_get_all_drives(drive_service):
             page_token = response.get("nextPageToken", None)
             if page_token is None:
                 break
-        st.write("Debug: Full API response:", response)
-        st.write("Debug: Found drives:", drives)
         return drives
 
     except Exception as e:
@@ -1025,6 +1023,7 @@ def gds_get_most_recent_files_recursive(
         return all_files[:max_results]
 
     except Exception as error:
+        st.error(f"An error occurred: {error}")
         print(f"An error occurred: {error}")
         return []
 

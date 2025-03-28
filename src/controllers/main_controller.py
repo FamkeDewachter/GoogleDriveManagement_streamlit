@@ -15,10 +15,6 @@ class MainController:
         self.user_name = user_name
         self.user_email = user_email
 
-        st.write("drive_service", self.drive_service)
-        st.write("user_name", self.user_name)
-        st.write("user_email", self.user_email)
-
         self.selection_controller = None
         self.comment_controller = None
         self.version_controller = None

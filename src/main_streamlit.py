@@ -16,9 +16,10 @@ else:
 
 
 def show_login_screen():
-    """Show the login screen and handle authentication."""
-    st.title("Welcome to the Application")
-    st.write("Please sign in to continue")
+    st.title("📁 GDrive Asset Manager")
+    st.markdown(
+        "Welcome! Please log in with your Google account to get started."
+    )
 
     if authenticate_user():
         st.session_state.authenticated = True
