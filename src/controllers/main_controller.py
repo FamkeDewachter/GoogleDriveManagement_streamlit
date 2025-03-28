@@ -15,6 +15,10 @@ class MainController:
         self.user_name = st.session_state.google_auth["user_name"]
         self.user_email = st.session_state.google_auth["user_email"]
 
+        st.write("drive_service", self.drive_service)
+        st.write("user_name", self.user_name)
+        st.write("user_email", self.user_email)
+
         self.selection_controller = None
         self.comment_controller = None
         self.version_controller = None
