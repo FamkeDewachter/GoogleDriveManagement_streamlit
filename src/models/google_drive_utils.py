@@ -929,6 +929,7 @@ def gds_get_all_drives(drive_service):
         return drives
 
     except Exception as e:
+        st.error(f"An error occurred: {e}")
         print(f"An error occurred: {e}")
         return []
 
