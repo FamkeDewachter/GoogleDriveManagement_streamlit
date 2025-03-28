@@ -3,12 +3,13 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+# Define consistent scopes (order matters for comparison)
 SCOPES = [
-    "https://www.googleapis.com/auth/drive",
-    "https://www.googleapis.com/auth/drive.file",
+    "openid",
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/userinfo.email",
-    "openid",
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/drive.file",
 ]
 
 
@@ -19,6 +20,7 @@ def authenticate_google_drive_web():
             "creds": None,
             "user_name": None,
             "user_email": None,
+            "requested_scopes": None,  # Track requested scopes
         }
 
     # Return cached credentials if valid
@@ -27,6 +29,12 @@ def authenticate_google_drive_web():
         and st.session_state.google_auth["creds"].valid
     ):
         try:
+            # Verify the scopes match
+            if set(st.session_state.google_auth["creds"].scopes or []) != set(
+                st.session_state.google_auth["requested_scopes"]
+            ):
+                raise ValueError("Scope mismatch detected")
+
             drive_service = build(
                 "drive",
                 "v3",
@@ -37,12 +45,18 @@ def authenticate_google_drive_web():
                 st.session_state.google_auth["user_name"],
                 st.session_state.google_auth["user_email"],
             )
-        except HttpError as e:
-            st.error(f"Google API error: {e}")
-            return None, None, None
+        except (HttpError, ValueError) as e:
+            st.error(f"Session validation failed: {e}")
+            # Clear invalid credentials
+            st.session_state.google_auth = {
+                "creds": None,
+                "user_name": None,
+                "user_email": None,
+                "requested_scopes": None,
+            }
+            st.rerun()
 
     try:
-        # Hardcoded production URI
         redirect_uri = "https://gdrive-management.streamlit.app/"
 
         flow = Flow.from_client_config(
@@ -59,12 +73,21 @@ def authenticate_google_drive_web():
             redirect_uri=redirect_uri,
         )
 
+        # Store requested scopes in session state
+        st.session_state.google_auth["requested_scopes"] = SCOPES
+
         # Check for authorization code in query params
         query_params = st.experimental_get_query_params()
         if "code" in query_params:
             code = query_params["code"][0]
             flow.fetch_token(code=code)
             creds = flow.credentials
+
+            # Verify granted scopes match requested scopes
+            if set(creds.scopes or []) != set(SCOPES):
+                raise ValueError(
+                    f"Scope mismatch. Requested: {SCOPES}, Granted: {creds.scopes}"
+                )
 
             # Get user profile
             people_service = build("people", "v1", credentials=creds)
@@ -78,15 +101,17 @@ def authenticate_google_drive_web():
             )
 
             # Store in session state
-            st.session_state.google_auth = {
-                "creds": creds,
-                "user_name": profile.get("names", [{}])[0].get(
-                    "displayName", "Unknown"
-                ),
-                "user_email": profile.get("emailAddresses", [{}])[0].get(
-                    "value", "unknown"
-                ),
-            }
+            st.session_state.google_auth.update(
+                {
+                    "creds": creds,
+                    "user_name": profile.get("names", [{}])[0].get(
+                        "displayName", "Unknown"
+                    ),
+                    "user_email": profile.get("emailAddresses", [{}])[0].get(
+                        "value", "unknown"
+                    ),
+                }
+            )
             st.experimental_set_query_params()
             st.rerun()
 
@@ -95,10 +120,9 @@ def authenticate_google_drive_web():
             auth_url, _ = flow.authorization_url(
                 prompt="consent",
                 access_type="offline",
-                include_granted_scopes="true",
+                include_granted_scopes="false",  # Important to prevent scope creep
             )
             if st.button("Login with Google"):
-                # Use JavaScript redirect with a small delay
                 js = f"""
                 <script>
                     function openAuth() {{
@@ -114,4 +138,10 @@ def authenticate_google_drive_web():
 
     except Exception as e:
         st.error(f"Authentication failed: {e}")
+        st.session_state.google_auth = {
+            "creds": None,
+            "user_name": None,
+            "user_email": None,
+            "requested_scopes": None,
+        }
         return None, None, None
