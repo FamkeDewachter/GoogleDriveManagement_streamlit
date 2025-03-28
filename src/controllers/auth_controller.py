@@ -1,4 +1,3 @@
-# auth_controller.py
 import streamlit as st
 import os
 from handlers.auth_handler import AuthHandler
@@ -10,27 +9,40 @@ class AuthController:
     def __init__(self):
         self.configure_app()
         self.handler = AuthHandler(
-            client_config={
-                "web": {
-                    "client_id": st.secrets["google"]["client_id"],
-                    "client_secret": st.secrets["google"]["client_secret"],
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                    "token_uri": "https://oauth2.googleapis.com/token",
-                    "redirect_uris": [st.secrets["google"]["redirect_uri"]],
-                }
-            },
-            redirect_uri=st.secrets["google"]["redirect_uri"],
+            client_config=self.get_client_config(),
+            redirect_uri=self.get_redirect_uri(),
         )
         self.view = AuthView()
         self.initialize_session()
+
+    def get_client_config(self):
+        """Get client config from secrets.toml"""
+        return {
+            "web": {
+                "client_id": st.secrets["google"]["client_id"],
+                "client_secret": st.secrets["google"]["client_secret"],
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [self.get_redirect_uri()],
+            }
+        }
+
+    def get_redirect_uri(self):
+        """Get redirect URI based on environment"""
+        if self.is_production():
+            return st.secrets["google"]["redirect_uri_production"]
+        else:
+            return st.secrets["google"]["redirect_uri_local"]
+
+    def is_production(self):
+        """Check if running in production"""
+        return os.getenv("IS_PRODUCTION", "false").lower() == "true"
 
     def configure_app(self):
         AuthView.configure_page(
             wide_layout=True,
             expanded_sidebar=True,
-            title=(
-                "GDrive Asset Manager" if os.getenv("IS_PRODUCTION") else None
-            ),
+            title="GDrive Asset Manager",
         )
 
     def initialize_session(self):
