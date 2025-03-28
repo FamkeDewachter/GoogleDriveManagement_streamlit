@@ -14,9 +14,6 @@ class MainController:
         self.drive_service, self.user_name, self.user_email = (
             authenticate_google_drive_web()
         )
-        if not self.drive_service or not self.user_name:
-            st.error("Please authenticate with Google to continue")
-            return
         # Initialize the Selection Controller first
         self.selection_controller = SelectionController(
             self.drive_service, self.user_name
@@ -30,6 +27,10 @@ class MainController:
         """
         Start the Main Controller and display the navigation sidebar.
         """
+        if not self.drive_service or not self.user_name:
+            st.error("Please authenticate with Google to continue")
+            return
+
         # Set default page to "Version Control"
         if "selected_page" not in st.session_state:
             st.session_state["selected_page"] = "Version Control"
