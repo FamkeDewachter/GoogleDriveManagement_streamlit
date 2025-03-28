@@ -1,0 +1,15 @@
+venv/
+token_desktop.pickle
+token_web.pickle
+test.py
+test.json
+test.html
+
+.streamlit/secrets.toml
+credentials_desktop.json
+
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+config.json
+credentials.json
