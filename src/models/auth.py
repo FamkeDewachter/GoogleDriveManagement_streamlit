@@ -1,89 +1,80 @@
 import streamlit as st
 from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-# If modifying these SCOPES, delete the file token file.
 SCOPES = [
-    # Full access to Google Drive (read/write)
     "https://www.googleapis.com/auth/drive",
-    # Access to files created or opened by the app
     "https://www.googleapis.com/auth/drive.file",
-    # For user profile
     "https://www.googleapis.com/auth/userinfo.profile",
-    # For user email
     "https://www.googleapis.com/auth/userinfo.email",
     "openid",
 ]
 
+CALLBACK_URL = "https://gdrive-management.streamlit.app/oauth-callback"
 
-def authenticate_google_drive_web():
-    """
-    Authenticates via Google OAuth and returns:
-    - drive_service
-    - user_name
-    - user_email
-    All credentials are stored in st.session_state
-    """
-    # Initialize session state
+
+def get_auth_url():
+    """Generate the authorization URL for initial redirect"""
+    flow = Flow.from_client_config(
+        client_config=st.secrets["google"],
+        scopes=SCOPES,
+        redirect_uri=CALLBACK_URL,
+    )
+    auth_url, _ = flow.authorization_url(
+        prompt="consent", access_type="offline"
+    )
+    st.session_state["oauth_flow"] = flow  # Store for callback phase
+    return auth_url
+
+
+def handle_oauth_callback():
+    """Process the OAuth callback and return credentials"""
+    if "oauth_flow" not in st.session_state:
+        raise Exception("No OAuth flow in progress")
+
+    flow = st.session_state["oauth_flow"]
+    code = st.experimental_get_query_params().get("code")
+    if not code:
+        raise Exception("No authorization code found")
+
+    # Exchange code for tokens
+    creds = flow.fetch_token(code=code[0])
+
+    # Get user info
+    people_service = build("people", "v1", credentials=creds)
+    profile = (
+        people_service.people()
+        .get(resourceName="people/me", personFields="names,emailAddresses")
+        .execute()
+    )
+
+    return {
+        "creds": creds,
+        "user_name": profile.get("names", [{}])[0].get(
+            "displayName", "Unknown"
+        ),
+        "user_email": profile.get("emailAddresses", [{}])[0].get(
+            "value", "unknown"
+        ),
+    }
+
+
+def check_existing_auth():
+    """Check for valid existing credentials"""
     if "google_auth" not in st.session_state:
-        st.session_state.google_auth = {
-            "creds": None,
-            "user_name": None,
-            "user_email": None,
-        }
-    # Return cached credentials if valid
-    if (
-        st.session_state.google_auth["creds"]
-        and st.session_state.google_auth["creds"].valid
-    ):
+        return None
+
+    creds = st.session_state.google_auth.get("creds")
+    if creds and creds.valid:
         try:
-            drive_service = build(
-                "drive",
-                "v3",
-                credentials=st.session_state.google_auth["creds"],
-            )
-            return (
-                drive_service,
-                st.session_state.google_auth["user_name"],
-                st.session_state.google_auth["user_email"],
-            )
+            drive_service = build("drive", "v3", credentials=creds)
+            return {
+                "drive_service": drive_service,
+                "user_name": st.session_state.google_auth["user_name"],
+                "user_email": st.session_state.google_auth["user_email"],
+            }
         except HttpError as e:
             st.error(f"Google API error: {e}")
-            return None, None, None
-
-    # OAuth Flow
-    try:
-        flow = InstalledAppFlow.from_client_config(
-            client_config=st.secrets["google"], scopes=SCOPES
-        )
-        creds = flow.run_local_server(port=0)
-
-        # Get user profile
-        people_service = build("people", "v1", credentials=creds)
-        profile = (
-            people_service.people()
-            .get(resourceName="people/me", personFields="names,emailAddresses")
-            .execute()
-        )
-
-        # Extract user info
-        user_name = profile.get("names", [{}])[0].get("displayName", "Unknown")
-        user_email = profile.get("emailAddresses", [{}])[0].get(
-            "value", "unknown"
-        )
-
-        # Store in session state
-        st.session_state.google_auth = {
-            "creds": creds,
-            "user_name": user_name,
-            "user_email": user_email,
-        }
-
-        drive_service = build("drive", "v3", credentials=creds)
-        return drive_service, user_name, user_email
-
-    except Exception as e:
-        st.error(f"Authentication failed: {e}")
-        return None, None, None
+    return None

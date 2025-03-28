@@ -7,13 +7,13 @@ import streamlit as st
 
 
 class MainController:
-    def __init__(self):
+    def __init__(self, drive_service, user_name, user_email):
         """
-        Initialize the Main Controller.
+        Initialize with already-authenticated services
         """
-        self.drive_service, self.user_name, self.user_email = (
-            authenticate_google_drive_web()
-        )
+        self.drive_service = drive_service
+        self.user_name = user_name
+        self.user_email = user_email
 
         # Initialize the Selection Controller first
         self.selection_controller = SelectionController(
