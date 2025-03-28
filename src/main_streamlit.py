@@ -37,7 +37,7 @@ def show_main_app():
             st.rerun()
             return
 
-        app = MainController()
+        app = MainController(drive_service, user_name, user_email)
         app.start()
     except Exception as e:
         st.error(f"Application error: {str(e)}")

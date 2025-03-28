@@ -6,14 +6,14 @@ import streamlit as st
 
 
 class MainController:
-    def __init__(self):
+    def __init__(self, drive_service, user_name, user_email):
         """
         Initialize the Main Controller.
         Assumes authentication has already been handled.
         """
-        self.drive_service = st.session_state.google_auth["creds"]
-        self.user_name = st.session_state.google_auth["user_name"]
-        self.user_email = st.session_state.google_auth["user_email"]
+        self.drive_service = drive_service
+        self.user_name = user_name
+        self.user_email = user_email
 
         st.write("drive_service", self.drive_service)
         st.write("user_name", self.user_name)
@@ -27,6 +27,7 @@ class MainController:
         """
         Start the Main Controller and display the navigation sidebar.
         """
+
         # Initialize the Selection Controller first
         self.selection_controller = SelectionController(
             self.drive_service, self.user_name
