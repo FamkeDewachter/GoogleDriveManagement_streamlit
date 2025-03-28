@@ -30,12 +30,12 @@ def main():
         )
 
     # Handle OAuth callback if code is in URL
-    query_params = st.query_params()
+    query_params = st.query_params
     if "code" in query_params:
         try:
             auth_data = handle_oauth_callback()
             st.session_state.google_auth.update(auth_data)
-            st.experimental_set_query_params()  # Clear URL params
+            st.query_params.clear()  # Clear URL params
             st.rerun()  # Refresh to load authenticated state
         except Exception as e:
             st.error(f"Authentication failed: {e}")

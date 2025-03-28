@@ -34,12 +34,13 @@ def handle_oauth_callback():
         raise Exception("No OAuth flow in progress")
 
     flow = st.session_state["oauth_flow"]
-    code = st.query_params.get("code")
+    query_params = st.query_params
+    code = query_params.get("code")
     if not code:
         raise Exception("No authorization code found")
 
     # Exchange code for tokens
-    creds = flow.fetch_token(code=code[0])
+    creds = flow.fetch_token(code=code)
 
     # Get user info
     people_service = build("people", "v1", credentials=creds)
