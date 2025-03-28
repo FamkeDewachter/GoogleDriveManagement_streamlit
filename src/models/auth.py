@@ -20,7 +20,7 @@ def authenticate_google_drive_web():
             "creds": None,
             "user_name": None,
             "user_email": None,
-            "requested_scopes": None,  # Track requested scopes
+            "requested_scopes": None,
         }
 
     # Return cached credentials if valid
@@ -29,7 +29,6 @@ def authenticate_google_drive_web():
         and st.session_state.google_auth["creds"].valid
     ):
         try:
-            # Verify the scopes match
             if set(st.session_state.google_auth["creds"].scopes or []) != set(
                 st.session_state.google_auth["requested_scopes"]
             ):
@@ -47,7 +46,6 @@ def authenticate_google_drive_web():
             )
         except (HttpError, ValueError) as e:
             st.error(f"Session validation failed: {e}")
-            # Clear invalid credentials
             st.session_state.google_auth = {
                 "creds": None,
                 "user_name": None,
@@ -73,65 +71,66 @@ def authenticate_google_drive_web():
             redirect_uri=redirect_uri,
         )
 
-        # Store requested scopes in session state
         st.session_state.google_auth["requested_scopes"] = SCOPES
 
-        # Check for authorization code in query params
-        query_params = st.query_params
+        # Get query parameters
+        query_params = st.query_params.to_dict()
         if "code" in query_params:
-            code = query_params["code"][0]
-            flow.fetch_token(code=code)
-            creds = flow.credentials
+            try:
+                code = query_params["code"]
+                flow.fetch_token(code=code)
+                creds = flow.credentials
 
-            # Verify granted scopes match requested scopes
-            if set(creds.scopes or []) != set(SCOPES):
-                raise ValueError(
-                    f"Scope mismatch. Requested: {SCOPES}, Granted: {creds.scopes}"
+                if set(creds.scopes or []) != set(SCOPES):
+                    raise ValueError(
+                        f"Scope mismatch. Requested: {SCOPES}, Granted: {creds.scopes}"
+                    )
+
+                # Get user profile
+                people_service = build("people", "v1", credentials=creds)
+                profile = (
+                    people_service.people()
+                    .get(
+                        resourceName="people/me",
+                        personFields="names,emailAddresses",
+                    )
+                    .execute()
                 )
 
-            # Get user profile
-            people_service = build("people", "v1", credentials=creds)
-            profile = (
-                people_service.people()
-                .get(
-                    resourceName="people/me",
-                    personFields="names,emailAddresses",
+                st.session_state.google_auth.update(
+                    {
+                        "creds": creds,
+                        "user_name": profile.get("names", [{}])[0].get(
+                            "displayName", "Unknown"
+                        ),
+                        "user_email": profile.get("emailAddresses", [{}])[
+                            0
+                        ].get("value", "unknown"),
+                    }
                 )
-                .execute()
-            )
-
-            # Store in session state
-            st.session_state.google_auth.update(
-                {
-                    "creds": creds,
-                    "user_name": profile.get("names", [{}])[0].get(
-                        "displayName", "Unknown"
-                    ),
-                    "user_email": profile.get("emailAddresses", [{}])[0].get(
-                        "value", "unknown"
-                    ),
+                st.query_params.clear()
+                st.rerun()
+            except Exception as e:
+                st.error(f"Token exchange failed: {e}")
+                st.session_state.google_auth = {
+                    "creds": None,
+                    "user_name": None,
+                    "user_email": None,
+                    "requested_scopes": None,
                 }
-            )
-            st.query_params.clear()
-            st.rerun()
+                st.rerun()
 
         # If not authenticated, show login button
         if not st.session_state.google_auth["creds"]:
             auth_url, _ = flow.authorization_url(
                 prompt="consent",
                 access_type="offline",
-                include_granted_scopes="false",  # Important to prevent scope creep
+                include_granted_scopes="false",
             )
             if st.button("Login with Google"):
-                js = f"""
-                <script>
-                    function openAuth() {{
-                        window.open("{auth_url}", "_blank");
-                    }}
-                    setTimeout(openAuth, 100);
-                </script>
-                """
-                st.components.v1.html(js, height=0)
+                st.write(
+                    f"Please [click here]({auth_url}) to authenticate with Google"
+                )
                 return None, None, None
 
         return None, None, None
