@@ -23,7 +23,7 @@ def get_redirect_uri():
             parsed = urlparse(current_url)
             return f"{parsed.scheme}://{parsed.netloc}/"
         return "https://gdrive-management.streamlit.app/"  # Fallback
-    return st.secrets["google.web"]["redirect_uris"][0]  # Local development
+    return st.secrets["google"]["redirect_uris"][0]  # Local development
 
 
 def authenticate_google_drive_web():
@@ -57,20 +57,20 @@ def authenticate_google_drive_web():
 
     try:
         # Use the first redirect URI from secrets
-        if not st.secrets["google.web"].get("redirect_uris"):
+        if not st.secrets["google"].get("redirect_uris"):
             st.error("Redirect URI configuration is missing in secrets")
             return None, None, None
 
-        redirect_uri = st.secrets["google.web"]["redirect_uris"][0]
+        redirect_uri = st.secrets["google"]["redirect_uris"][0]
 
         flow = Flow.from_client_config(
             client_config={
                 "web": {
-                    "client_id": st.secrets["google.web"]["client_id"],
-                    "client_secret": st.secrets["google.web"]["client_secret"],
-                    "auth_uri": st.secrets["google.web"]["auth_uri"],
-                    "token_uri": st.secrets["google.web"]["token_uri"],
-                    "redirect_uris": st.secrets["google.web"]["redirect_uris"],
+                    "client_id": st.secrets["google"]["client_id"],
+                    "client_secret": st.secrets["google"]["client_secret"],
+                    "auth_uri": st.secrets["google"]["auth_uri"],
+                    "token_uri": st.secrets["google"]["token_uri"],
+                    "redirect_uris": st.secrets["google"]["redirect_uris"],
                 }
             },
             scopes=SCOPES,
