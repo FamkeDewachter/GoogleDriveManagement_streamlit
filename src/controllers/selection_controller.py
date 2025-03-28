@@ -34,14 +34,15 @@ class SelectionController:
 
         # Initialize drives in session state if not present
         if "all_drives" not in st.session_state:
+            st.write("Fetching shared drives... This may take a few seconds.")
             st.session_state.all_drives = (
                 self.handler.get_all_drives_for_display()
             )
             st.session_state.selected_drive = (
                 None  # Initialize drive selection
             )
-
         if not st.session_state.all_drives:
+            st.write("No shared drives found. Please check your permissions.")
             self.ui.show_message(
                 "No shared drives found, this app requires at least one shared drive.",
                 message_type="error",
