@@ -52,35 +52,31 @@ def authenticate_google_drive_web():
                 st.session_state.google_auth["user_email"],
             )
         except HttpError as e:
-            error_details = f"""
-            Google API error while using cached credentials:
-            - Status: {e.status_code}
-            - Reason: {e.error_details if hasattr(e, 'error_details') else 'No details'}
-            - Message: {str(e)}
-            """
-            st.error(f"Google API error: {error_details}")
+            st.error(f"Google API error: {e}")
             return None, None, None
 
     try:
-        # Check if Google secrets are properly configured
-        if "google" not in st.secrets:
-            st.error(
-                "Google OAuth configuration is missing in Streamlit secrets."
-            )
+        # Use the first redirect URI from secrets
+        if not st.secrets["google.web"].get("redirect_uris"):
+            st.error("Redirect URI configuration is missing in secrets")
             return None, None, None
 
-        if (
-            "redirect_uris" not in st.secrets["google"]
-            or not st.secrets["google"]["redirect_uris"]
-        ):
-            st.error("Redirect URI is missing in Google OAuth configuration.")
-            return None, None, None
+        redirect_uri = st.secrets["google.web"]["redirect_uris"][0]
 
         flow = Flow.from_client_config(
-            client_config=st.secrets["google"],
+            client_config={
+                "web": {
+                    "client_id": st.secrets["google.web"]["client_id"],
+                    "client_secret": st.secrets["google.web"]["client_secret"],
+                    "auth_uri": st.secrets["google.web"]["auth_uri"],
+                    "token_uri": st.secrets["google.web"]["token_uri"],
+                    "redirect_uris": st.secrets["google.web"]["redirect_uris"],
+                }
+            },
             scopes=SCOPES,
-            redirect_uri=get_redirect_uri(),
+            redirect_uri=redirect_uri,
         )
+
         # Generate auth URL
         auth_url, _ = flow.authorization_url(prompt="consent")
 
@@ -92,72 +88,40 @@ def authenticate_google_drive_web():
         # Handle callback
         if "code" in st.experimental_get_query_params():
             code = st.experimental_get_query_params()["code"]
+            flow.fetch_token(code=code)
+            creds = flow.credentials
 
-            try:
-                flow.fetch_token(code=code)
-                creds = flow.credentials
-            except Exception as e:
-                st.error(f"Failed to fetch access token: {str(e)}")
-                return None, None, None
-
-            try:
-                # Get user profile
-                people_service = build("people", "v1", credentials=creds)
-                profile = (
-                    people_service.people()
-                    .get(
-                        resourceName="people/me",
-                        personFields="names,emailAddresses",
-                    )
-                    .execute()
+            # Get user profile
+            people_service = build("people", "v1", credentials=creds)
+            profile = (
+                people_service.people()
+                .get(
+                    resourceName="people/me",
+                    personFields="names,emailAddresses",
                 )
+                .execute()
+            )
 
-                # Extract user info
-                user_name = profile.get("names", [{}])[0].get(
-                    "displayName", "Unknown"
-                )
-                user_email = profile.get("emailAddresses", [{}])[0].get(
-                    "value", "unknown"
-                )
+            # Extract user info
+            user_name = profile.get("names", [{}])[0].get(
+                "displayName", "Unknown"
+            )
+            user_email = profile.get("emailAddresses", [{}])[0].get(
+                "value", "unknown"
+            )
 
-                # Store in session state
-                st.session_state.google_auth = {
-                    "creds": creds,
-                    "user_name": user_name,
-                    "user_email": user_email,
-                }
+            # Store in session state
+            st.session_state.google_auth = {
+                "creds": creds,
+                "user_name": user_name,
+                "user_email": user_email,
+            }
 
-                drive_service = build("drive", "v3", credentials=creds)
-                return drive_service, user_name, user_email
-
-            except HttpError as e:
-                error_details = f"""
-                Google People API error:
-                - Status: {e.status_code}
-                - Reason: {e.error_details if hasattr(e, 'error_details') else 'No details'}
-                - Message: {str(e)}
-                """
-                st.error(f"Failed to get user profile: {error_details}")
-                return None, None, None
-
-            except Exception as e:
-                st.error(
-                    f"Unexpected error while getting user profile: {str(e)}"
-                )
-                return None, None, None
+            drive_service = build("drive", "v3", credentials=creds)
+            return drive_service, user_name, user_email
 
         return None, None, None
 
     except Exception as e:
-        error_type = type(e).__name__
-        error_details = f"""
-        Authentication failed:
-        - Type: {error_type}
-        - Message: {str(e)}
-        """
-
-        if hasattr(e, "args") and e.args:
-            error_details += f"- Args: {e.args}\n"
-
-        st.error(f"Authentication error: {error_details}")
+        st.error(f"Authentication failed: {e}")
         return None, None, None
