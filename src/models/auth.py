@@ -1,3 +1,4 @@
+# auth.py
 import streamlit as st
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
@@ -13,15 +14,21 @@ SCOPES = [
 ]
 
 
-def authenticate_google_drive_web():
-    # Initialize session state
+def initialize_auth_session():
+    """Initialize the authentication session state."""
     if "google_auth" not in st.session_state:
         st.session_state.google_auth = {
             "creds": None,
             "user_name": None,
             "user_email": None,
             "requested_scopes": None,
+            "is_authenticated": False,
         }
+
+
+def authenticate_user():
+    """Handle the Google authentication flow."""
+    initialize_auth_session()
 
     # Return cached credentials if valid
     if (
@@ -34,29 +41,15 @@ def authenticate_google_drive_web():
             ):
                 raise ValueError("Scope mismatch detected")
 
-            drive_service = build(
-                "drive",
-                "v3",
-                credentials=st.session_state.google_auth["creds"],
-            )
-            return (
-                drive_service,
-                st.session_state.google_auth["user_name"],
-                st.session_state.google_auth["user_email"],
-            )
+            st.session_state.google_auth["is_authenticated"] = True
+            return True
         except (HttpError, ValueError) as e:
             st.error(f"Session validation failed: {e}")
-            st.session_state.google_auth = {
-                "creds": None,
-                "user_name": None,
-                "user_email": None,
-                "requested_scopes": None,
-            }
-            st.rerun()
+            reset_auth_session()
+            return False
 
     try:
         redirect_uri = "https://gdrive-management.streamlit.app/"
-
         flow = Flow.from_client_config(
             client_config={
                 "web": {
@@ -106,41 +99,70 @@ def authenticate_google_drive_web():
                         "user_email": profile.get("emailAddresses", [{}])[
                             0
                         ].get("value", "unknown"),
+                        "is_authenticated": True,
                     }
                 )
                 st.query_params.clear()
                 st.rerun()
+                return True
             except Exception as e:
                 st.error(f"Token exchange failed: {e}")
-                st.session_state.google_auth = {
-                    "creds": None,
-                    "user_name": None,
-                    "user_email": None,
-                    "requested_scopes": None,
-                }
-                st.rerun()
+                reset_auth_session()
+                return False
 
         # If not authenticated, show login button
-        if not st.session_state.google_auth["creds"]:
+        if not st.session_state.google_auth["is_authenticated"]:
             auth_url, _ = flow.authorization_url(
                 prompt="consent",
                 access_type="offline",
                 include_granted_scopes="false",
             )
-            if st.button("Login with Google"):
+            st.markdown("## Please sign in to continue")
+            if st.button("Sign in with Google"):
                 st.write(
                     f"Please [click here]({auth_url}) to authenticate with Google"
                 )
-                return None, None, None
+            return False
 
-        return None, None, None
+        return False
 
     except Exception as e:
         st.error(f"Authentication failed: {e}")
-        st.session_state.google_auth = {
-            "creds": None,
-            "user_name": None,
-            "user_email": None,
-            "requested_scopes": None,
-        }
+        reset_auth_session()
+        return False
+
+
+def reset_auth_session():
+    """Reset the authentication session state."""
+    st.session_state.google_auth = {
+        "creds": None,
+        "user_name": None,
+        "user_email": None,
+        "requested_scopes": None,
+        "is_authenticated": False,
+    }
+    st.rerun()
+
+
+def get_authenticated_service():
+    """Return the authenticated drive service and user info if available."""
+    if not st.session_state.get("google_auth", {}).get(
+        "is_authenticated", False
+    ):
+        return None, None, None
+
+    try:
+        drive_service = build(
+            "drive",
+            "v3",
+            credentials=st.session_state.google_auth["creds"],
+        )
+        return (
+            drive_service,
+            st.session_state.google_auth["user_name"],
+            st.session_state.google_auth["user_email"],
+        )
+    except Exception as e:
+        st.error(f"Failed to create service: {e}")
+        reset_auth_session()
         return None, None, None

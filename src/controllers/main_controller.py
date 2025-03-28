@@ -1,4 +1,3 @@
-from models.auth import authenticate_google_drive_web
 from controllers.comment_controller import CommentController
 from controllers.version_control_controller import VersionControlController
 from controllers.selection_controller import SelectionController
@@ -10,13 +9,11 @@ class MainController:
     def __init__(self):
         """
         Initialize the Main Controller.
+        Assumes authentication has already been handled.
         """
-        self.drive_service, self.user_name, self.user_email = (
-            authenticate_google_drive_web()
-        )
-        if not self.drive_service or not self.user_name:
-            st.error("Please authenticate with Google to continue")
-            return
+        self.drive_service = st.session_state.google_auth["creds"]
+        self.user_name = st.session_state.google_auth["user_name"]
+        self.user_email = st.session_state.google_auth["user_email"]
 
         # Initialize the Selection Controller first
         self.selection_controller = SelectionController(
@@ -31,7 +28,6 @@ class MainController:
         """
         Start the Main Controller and display the navigation sidebar.
         """
-
         # Set default page to "Version Control"
         if "selected_page" not in st.session_state:
             st.session_state["selected_page"] = "Version Control"
