@@ -15,12 +15,7 @@ class MainController:
         self.user_name = st.session_state.google_auth["user_name"]
         self.user_email = st.session_state.google_auth["user_email"]
 
-        # Initialize the Selection Controller first
-        self.selection_controller = SelectionController(
-            self.drive_service, self.user_name
-        )
-
-        # Initialize other controllers only if needed
+        self.selection_controller = None
         self.comment_controller = None
         self.version_controller = None
 
@@ -28,6 +23,11 @@ class MainController:
         """
         Start the Main Controller and display the navigation sidebar.
         """
+        # Initialize the Selection Controller first
+        self.selection_controller = SelectionController(
+            self.drive_service, self.user_name
+        )
+
         # Set default page to "Version Control"
         if "selected_page" not in st.session_state:
             st.session_state["selected_page"] = "Version Control"

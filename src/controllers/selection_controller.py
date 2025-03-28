@@ -30,6 +30,13 @@ class SelectionController:
         """
         Handle and display the drives in a user-friendly way.
         """
+        # Debug: Check if drive service exists
+        if (
+            not hasattr(self.handler, "drive_service")
+            or not self.handler.drive_service
+        ):
+            st.error("Drive service not initialized properly")
+            return
         st.markdown("### Select a Shared Drive")
 
         # Initialize drives in session state if not present
