@@ -34,7 +34,7 @@ def handle_oauth_callback():
         raise Exception("No OAuth flow in progress")
 
     flow = st.session_state["oauth_flow"]
-    code = st.query_params().get("code")
+    code = st.experimental_get_query_params().get("code")
     if not code:
         raise Exception("No authorization code found")
 

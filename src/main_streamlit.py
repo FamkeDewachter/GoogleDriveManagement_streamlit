@@ -30,7 +30,7 @@ def main():
         )
 
     # Handle OAuth callback if code is in URL
-    query_params = st.query_params()
+    query_params = st.experimental_get_query_params()
     if "code" in query_params:
         try:
             auth_data = handle_oauth_callback()
