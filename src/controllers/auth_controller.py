@@ -32,14 +32,9 @@ class AuthController:
             st.stop()
 
     def is_production(self):
-        """Auto-detect production by checking if the redirect URI contains 'streamlit.app'"""
-        try:
-            return (
-                "streamlit.app"
-                in st.secrets["google"]["redirect_uri_production"]
-            )
-        except KeyError:
-            return False
+        """Check if running locally by testing for localhost"""
+        host = st.query_params.to_dict().get("_host", "")
+        return "localhost" not in host
 
     def get_redirect_uri(self):
         """Use production URI if running on Streamlit Cloud, otherwise local"""
