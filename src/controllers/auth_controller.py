@@ -17,29 +17,41 @@ class AuthController:
 
     def get_client_config(self):
         """Get client config from secrets.toml"""
-        return {
-            "web": {
-                "client_id": st.secrets["google"]["client_id"],
-                "client_secret": st.secrets["google"]["client_secret"],
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [self.get_redirect_uri()],
+        try:
+            return {
+                "web": {
+                    "client_id": st.secrets.google.client_id,
+                    "client_secret": st.secrets.google.client_secret,
+                    "auth_uri": st.secrets.google.auth_uri,
+                    "token_uri": st.secrets.google.token_uri,
+                    "redirect_uris": [self.get_redirect_uri()],
+                }
             }
-        }
+        except Exception as e:
+            st.error(f"Error loading client config: {str(e)}")
+            st.stop()
 
     def is_production(self):
         """Auto-detect production by checking if the redirect URI contains 'streamlit.app'"""
-        return (
-            "streamlit.app" in st.secrets["google"]["redirect_uri_production"]
-        )
+        try:
+            return (
+                "streamlit.app"
+                in st.secrets["google"]["redirect_uri_production"]
+            )
+        except KeyError:
+            return False
 
     def get_redirect_uri(self):
         """Use production URI if running on Streamlit Cloud, otherwise local"""
-        return (
-            st.secrets["google"]["redirect_uri_production"]
-            if self.is_production()
-            else st.secrets["google"]["redirect_uri_local"]
-        )
+        try:
+            return (
+                st.secrets.google.redirect_uri_production
+                if self.is_production()
+                else st.secrets.google.redirect_uri_local
+            )
+        except Exception as e:
+            st.error(f"Error getting redirect URI: {str(e)}")
+            st.stop()
 
     def configure_app(self):
         AuthView.configure_page(
