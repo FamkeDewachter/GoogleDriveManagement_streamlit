@@ -83,7 +83,7 @@ def authenticate_google_drive_web():
         # Display login button
         if st.button("Login with Google"):
             st.session_state.auth_url = auth_url
-            st.experimental_rerun()
+            st.rerun()
 
         # Handle callback
         if "code" in st.experimental_get_query_params():
