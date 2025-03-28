@@ -30,13 +30,6 @@ class SelectionController:
         """
         Handle and display the drives in a user-friendly way.
         """
-        # Debug: Check if drive service exists
-        if (
-            not hasattr(self.handler, "drive_service")
-            or not self.handler.drive_service
-        ):
-            st.error("Drive service not initialized properly")
-            return
         st.markdown("### Select a Shared Drive")
 
         # Initialize drives in session state if not present
@@ -45,9 +38,7 @@ class SelectionController:
             st.session_state.all_drives = (
                 self.handler.get_all_drives_for_display()
             )
-            st.session_state.selected_drive = (
-                None  # Initialize drive selection
-            )
+            st.session_state.selected_drive = None
         if not st.session_state.all_drives:
             st.write("No shared drives found. Please check your permissions.")
             self.ui.show_message(

@@ -23,7 +23,9 @@ class SelectionHandler:
         Returns:
             list: A sorted list of dictionaries with "id" and "name" keys.
         """
-
+        st.write(
+            "drive_service in get all ddrives for isplay", self.drive_service
+        )
         drives = gds_get_all_drives(self.drive_service)
 
         # Convert drives to list of dictionaries
