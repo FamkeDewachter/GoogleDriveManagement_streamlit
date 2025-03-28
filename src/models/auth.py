@@ -14,13 +14,6 @@ SCOPES = [
 ]
 
 
-def get_redirect_uri():
-    """Determine the correct redirect URI based on environment"""
-    if os.getenv("IS_PRODUCTION", "false").lower() == "true":
-        return "https://gdrive-management.streamlit.app/"
-    return "http://localhost:8501/"
-
-
 def authenticate_google_drive_web():
     # Initialize session state
     if "google_auth" not in st.session_state:
@@ -51,7 +44,7 @@ def authenticate_google_drive_web():
             return None, None, None
 
     try:
-        redirect_uri = get_redirect_uri()
+        redirect_uri = "https://gdrive-management.streamlit.app/"
         flow = Flow.from_client_config(
             client_config={
                 "web": {
@@ -105,12 +98,11 @@ def authenticate_google_drive_web():
         if not st.session_state.google_auth["creds"]:
             auth_url, _ = flow.authorization_url(prompt="consent")
             if st.button("Login with Google"):
-                st.write(f"Please [click here to authenticate]({auth_url})")
-                # Or use JavaScript redirect
-                # st.markdown(f'<meta http-equiv="refresh" content="0; url={auth_url}">', unsafe_allow_html=True)
+                st.markdown(
+                    f'<meta http-equiv="refresh" content="0; url={auth_url}">',
+                    unsafe_allow_html=True,
+                )
                 return None, None, None
-        st.write(f"Redirect URI: {redirect_uri}")
-        st.write(f"Query params: {st.experimental_get_query_params()}")
 
         # If we have credentials, return them
         if st.session_state.google_auth["creds"]:
