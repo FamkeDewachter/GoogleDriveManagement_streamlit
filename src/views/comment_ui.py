@@ -109,14 +109,7 @@ class CommentUI:
 
         # Format version names with image indicator if applicable
         def format_version(version):
-            name = version["name"]
-            # Check if version is an image (you might need to adjust this based on your file naming)
-            if any(
-                ext in name.lower()
-                for ext in [".jpg", ".jpeg", ".png", ".gif"]
-            ):
-                return f"{name} (click to preview)"
-            return name
+            return version["name"]
 
         selected_version = st.selectbox(
             label=label,
