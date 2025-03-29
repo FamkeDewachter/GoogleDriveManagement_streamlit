@@ -1032,6 +1032,7 @@ class VersionControlUI:
             sortable=True,
             wrapText=False,
             minWidth=100,
+            autoHeight=True,
         )
 
         # JavaScript date formatter
