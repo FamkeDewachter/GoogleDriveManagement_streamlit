@@ -89,13 +89,21 @@ class SelectionController:
         # Initialize folders in session state if not present
         if "all_project_folders" not in st.session_state:
             st.session_state.all_project_folders = None
+        if "last_search_term" not in st.session_state:
+            st.session_state.last_search_term = None
 
-        # Only search when there's a search term
-        if search_term:
+        # Only search when there's a search term and it has changed
+        if search_term and search_term != st.session_state.last_search_term:
             folders_to_display = self.handler.get_folders_matching_search(
                 drive_id, search_term
             )
+            st.session_state.last_search_term = search_term
+            st.session_state.searched_folders = folders_to_display
 
+        # Use the cached results if available
+        folders_to_display = st.session_state.get("searched_folders", [])
+
+        if search_term:
             if not folders_to_display:
                 self.ui.show_message(
                     "No folders found matching your search. Try a different name.",

@@ -36,18 +36,6 @@ class SelectionHandler:
 
         return drives_sorted
 
-    def get_folders_with_max_depth(self, drive_id, max_depth=2):
-        """
-        Retrieve the most recent folder from Google Drive.
-
-        Args:
-            drive_id (str): The ID of the drive to search for folders.
-        """
-        project_folders = gds_get_subfolders_hierarchical(
-            self.drive_service, drive_id, max_depth=max_depth
-        )
-        return project_folders
-
     def get_folders_matching_search(self, drive_id, search_term):
         """
         Retrieve folders from Google Drive and return them as a list of dictionaries
@@ -65,6 +53,7 @@ class SelectionHandler:
             return None
 
         try:
+            print("Searching for project folders in drive...")
             folders = gds_get_subfolders_hierarchical(
                 self.drive_service, drive_id, search_term=search_term
             )

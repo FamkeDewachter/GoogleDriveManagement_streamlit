@@ -561,6 +561,7 @@ class VersionControlHandler:
             list: A list of subfolders with hierarchical structure.
         """
         try:
+            print("Getting subfolders in version control handler...")
             subfolders = gds_get_subfolders_hierarchical(
                 self.drive_service, drive_id, folder_id=root_folder_id
             )
