@@ -222,7 +222,7 @@ def gds_get_subfolders_hierarchical(
     Returns:
         list: A list of dictionaries containing folder information of the subfolders (id, name, modifiedTime, createdTime, depth).
     """
-    print("Fetching project folders...")
+    print("Fetching subfolders...")
 
     def _get_folders_recursive(parent_id, current_depth):
         """

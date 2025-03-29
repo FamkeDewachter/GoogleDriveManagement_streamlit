@@ -11,6 +11,32 @@ class CommentUI:
         """Displays the app title."""
         st.title("Comments", anchor=False)
 
+    def display_button(
+        self, key, label="Button", use_container_width=False, help=""
+    ):
+        """
+        Display a clickable button widget.
+
+        Args:
+            key (str): Unique key for the widget.
+            label (str, optional): Text to display on the button.
+            Defaults to "Button".
+            use_container_width (bool, optional): Whether
+            to expand button to container width. Defaults to False.
+            help (str, optional): Help text to
+            display when hovering. Defaults to "".
+
+        Returns:
+            bool: True if the button was clicked
+            in the current run, False otherwise.
+        """
+        return st.button(
+            label,
+            key=key,
+            use_container_width=use_container_width,
+            help=help,
+        )
+
     def display_header(self, selected_file, selected_version):
         """
         Displays the header with the selected file and version.
@@ -76,6 +102,7 @@ class CommentUI:
     def display_selectbox_files(
         self,
         files,
+        key,
         placeholder="No options",
         label="Select a file:",
     ):
@@ -89,6 +116,7 @@ class CommentUI:
         selected_file = st.selectbox(
             label=label,
             options=files,
+            key=key,
             format_func=format_files,
             index=0,
             help="Shows the 10 most recently modified files unless searched."
@@ -100,6 +128,7 @@ class CommentUI:
     def display_selectbox_versions(
         self,
         versions,
+        key,
         placeholder="No versions found",
         label="Select a version:",
     ):
@@ -116,6 +145,7 @@ class CommentUI:
             options=versions,
             format_func=format_version,
             index=0,
+            key=key,
             help="Select a version to preview and comment on",
         )
 

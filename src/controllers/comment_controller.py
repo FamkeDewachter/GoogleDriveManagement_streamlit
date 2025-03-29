@@ -12,14 +12,42 @@ class CommentController:
         self.handler = CommentsHandler(drive_service, user_name)
         self.ui = CommentUI(user_name)
 
+    def _initialize_session_state(self):
+        """Initialize all required session state variables with default values."""
+        defaults = {
+            # Core selection states
+            "selected_file": None,
+            "selected_version": None,
+            "comments": None,
+            "all_files": None,
+            "all_versions": None,
+            # Search and filter states
+            "search_term_files": "",
+            "searched_files": None,
+            "filter_criteria": None,
+            # UI reset keys
+            "files_reset_key": 0,
+            "versions_reset_key": 0,
+            "comments_reset_key": 0,
+            # Preview states
+            "version_preview_content": None,
+            "last_selected_version_id": None,
+        }
+
+        for key, value in defaults.items():
+            st.session_state.setdefault(key, value)
+
     def start(self, width_ratio=3):
         """Handle comments for the selected file version."""
+        self._initialize_session_state()
+
+        # Clear state if no file/version selected
         if not st.session_state.get(
             "selected_file"
         ) or not st.session_state.get("selected_version"):
-            st.session_state.pop("selected_file", None)
-            st.session_state.pop("selected_version", None)
-            st.session_state.pop("comments", None)
+            self._clear_session_keys(
+                ["selected_file", "selected_version", "comments"]
+            )
 
         self.ui.display_title()
 
@@ -37,40 +65,42 @@ class CommentController:
             self._handle_and_display_new_comment()
 
     def _clear_session_keys(self, keys):
+        """Clear specific keys from session state."""
         for key in keys:
             st.session_state.pop(key, None)
 
     def _handle_and_display_files(self):
         """Handle and display the files, with search functionality."""
-        # Initialize all necessary session state variables
-        self._initialize_file_state()
 
-        # Display search bar and get search term
-        search_term = self.ui.display_searchbar_files(
+        # Update search_term_files in session state immediately when search changes
+        new_search_term = self.ui.display_searchbar_files(
             placeholder="Search files..."
         )
 
+        if new_search_term != st.session_state.search_term_files:
+            st.session_state.search_term_files = new_search_term
+            st.rerun()
+
+        if self.ui.display_button(
+            key="refresh_files",
+            label=":material/refresh:",
+            help="Refresh files",
+        ):
+            self._clear_session_keys(["all_files", "searched_files"])
+            st.rerun()
+
         # Determine which files to display based on search
-        if search_term:
-            self._handle_file_search(search_term)
+        if st.session_state.search_term_files:
+            self._handle_file_search(st.session_state.search_term_files)
             files_to_display = st.session_state.searched_files
         else:
             self._handle_recent_files()
             files_to_display = st.session_state.all_files
             # Clear search-related state when no search term
-            self._clear_session_keys(["searched_files", "last_search_term"])
+            self._clear_session_keys(["searched_files"])
 
         # Display file selection UI
         self._display_file_selection(files_to_display)
-
-    def _initialize_file_state(self):
-        """Initialize all file-related session state variables."""
-        st.session_state.setdefault("all_files", None)
-        st.session_state.setdefault("searched_files", None)
-        st.session_state.setdefault("last_search_term", "")
-        st.session_state.setdefault("selected_file", None)
-        st.session_state.setdefault("comments", None)
-        st.session_state.setdefault("all_versions", None)
 
     def _handle_file_search(self, search_term):
         """Handle file search functionality."""
@@ -110,17 +140,18 @@ class CommentController:
         folders_with_name = self.handler.get_folders_info(
             folder_ids, fields="id, name"
         )
-
         return self.handler.add_folder_info_to_files(
             gds_files, folders_with_name
         )
 
     def _display_file_selection(self, files_to_display):
         """Display file selection UI and handle selection changes."""
+        reset_key = st.session_state.get("files_reset_key", 0)
         selected_file = self.ui.display_selectbox_files(
             label="Select a file:",
             files=files_to_display if files_to_display else None,
             placeholder="No files found",
+            key=f"files_select_{reset_key}",
         )
 
         if (
@@ -133,38 +164,39 @@ class CommentController:
 
     def _reset_file_selection_state(self):
         """Reset state when file selection changes."""
-        st.session_state.selected_version = None
-        st.session_state.comments = None
-        st.session_state.filter_criteria = None
-        self._clear_filter_state()
+        self._clear_session_keys(
+            [
+                "selected_version",
+                "comments",
+                "filter_criteria",
+                "all_versions",
+                "version_preview_content",
+                "last_selected_version_id",
+            ]
+        )
+        st.session_state["versions_reset_key"] = (
+            st.session_state.get("versions_reset_key", 0) + 1
+        )
+        st.session_state["comments_reset_key"] = (
+            st.session_state.get("comments_reset_key", 0) + 1
+        )
 
     def _handle_and_display_versions(self):
         """Handle and display the versions, only re-fetch if needed."""
         selected_file = st.session_state.selected_file
 
-        # Initialize session state variables
-        self._initialize_version_state()
-
         # Load versions if needed
         self._load_versions_if_needed(selected_file)
 
-        # Display version selection UI
+        reset_key = st.session_state.get("versions_reset_key", 0)
         selected_version = self.ui.display_selectbox_versions(
             versions=st.session_state.all_versions if selected_file else None,
+            key=f"versions_select_{reset_key}",
         )
 
         self._handle_version_change(selected_version)
-
         self._handle_version_download(selected_file, selected_version)
-
         self._handle_version_preview(selected_version)
-
-    def _initialize_version_state(self):
-        """Initialize all version-related session state variables."""
-        st.session_state.setdefault("all_versions", None)
-        st.session_state.setdefault("last_selected_file", None)
-        st.session_state.setdefault("version_preview_content", None)
-        st.session_state.setdefault("last_selected_version_id", None)
 
     def _load_versions_if_needed(self, selected_file):
         """Load versions if the selected file has changed or versions aren't loaded."""
@@ -186,10 +218,12 @@ class CommentController:
             "selected_version" in st.session_state
             and st.session_state.selected_version != selected_version
         ):
-            st.session_state.comments = None
-            st.session_state.filter_criteria = None
-            self._clear_filter_state()
-            st.session_state.version_preview_content = None
+            self._clear_session_keys(
+                ["comments", "filter_criteria", "version_preview_content"]
+            )
+            st.session_state["comments_reset_key"] = (
+                st.session_state.get("comments_reset_key", 0) + 1
+            )
 
         st.session_state.selected_version = selected_version
 
@@ -239,16 +273,6 @@ class CommentController:
         return any(
             ext in filename.lower()
             for ext in [".jpg", ".jpeg", ".png", ".gif"]
-        )
-
-    def _clear_filter_state(self):
-        """Clear all filter-related session state."""
-        self._clear_session_keys(
-            [
-                "comment_status_filter",
-                "comment_user_filter",
-                "comment_search_filter",
-            ]
         )
 
     def _handle_and_display_comments(self):
@@ -620,3 +644,13 @@ class CommentController:
                     )
                 else:
                     st.error("Failed to prepare download")
+
+    def _clear_filter_state(self):
+        """Clear all filter-related session state."""
+        self._clear_session_keys(
+            [
+                "comment_status_filter",
+                "comment_user_filter",
+                "comment_search_filter",
+            ]
+        )
