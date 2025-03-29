@@ -25,19 +25,35 @@ class VersionControlController:
             drive_service,
             user_name,
         )
-        if "search_term_files" not in st.session_state:
-            st.session_state.search_term_files = None
 
-        if "selected_file" not in st.session_state:
-            st.session_state.selected_file = None
+    def _initialize_session_state(self):
+        """
+        Initializes all required session state variables with default values.
+        """
+        defaults = {
+            # Core selection states
+            "search_term_files": None,
+            "selected_file": None,
+            "selected_version": None,
+            # Batch operation states
+            "batch_selected_files": [],
+            "batch_selected_versions": [],
+            # UI reset keys
+            "files_reset_key": 0,
+            "versions_reset_key": 0,
+            # Cache-related states
+            "files_for_display": [],
+        }
 
-        if "selected_version" not in st.session_state:
-            st.session_state.selected_version = None
+        for key, value in defaults.items():
+            st.session_state.setdefault(key, value)
 
     def start(self):
         """
         Runs the application by connecting the UI and Handler.
         """
+        self._initialize_session_state()
+
         st.title("Version Control", anchor="False")
 
         # Create a container for the main content
@@ -973,32 +989,46 @@ class VersionControlController:
 
     def _clear_files_session_state(self):
         """Clears all session state related to files."""
-        drive_id = st.session_state.selected_drive["id"]
-        project_folder_id = st.session_state.selected_project_folder["id"]
-        search_term = st.session_state.search_term_files or None
-        cache_key = f"files_{drive_id}_{project_folder_id}_{search_term}"
+        # Clear cache
+        drive_id = st.session_state.get("selected_drive", {}).get("id")
+        project_folder_id = st.session_state.get(
+            "selected_project_folder", {}
+        ).get("id")
+        search_term = st.session_state.get("search_term_files")
 
-        # Clear file-related session states
-        st.session_state.pop(cache_key, None)
-        st.session_state.pop("selected_file", None)
-        st.session_state.pop("files_for_display", None)
-        st.session_state.pop("batch_selected_files", None)
-        st.session_state.pop("search_term_files", None)
-        st.session_state.files_reset_key = (
+        if drive_id and project_folder_id:
+            cache_key = f"files_{drive_id}_{project_folder_id}_{search_term}"
+            st.session_state.pop(cache_key, None)
+
+        # Clear file states
+        keys_to_clear = [
+            "selected_file",
+            "files_for_display",
+            "batch_selected_files",
+            "search_term_files",
+        ]
+        for key in keys_to_clear:
+            st.session_state.pop(key, None)
+
+        # Increment reset key
+        st.session_state["files_reset_key"] = (
             st.session_state.get("files_reset_key", 0) + 1
         )
-        self._clear_versions_session_state()
 
     def _clear_versions_session_state(self):
         """Clears all session state related to versions."""
+        # Clear cache
         selected_file = st.session_state.get("selected_file")
-        if selected_file:
+        if selected_file and selected_file.get("id"):
             cache_key = f"versions_for_file_{selected_file['id']}"
             st.session_state.pop(cache_key, None)
 
-        # Clear version-related session states
-        st.session_state.pop("selected_version", None)
-        st.session_state.pop("batch_selected_versions", None)
-        st.session_state.versions_reset_key = (
+        # Clear version states
+        keys_to_clear = ["selected_version", "batch_selected_versions"]
+        for key in keys_to_clear:
+            st.session_state.pop(key, None)
+
+        # Increment reset key
+        st.session_state["versions_reset_key"] = (
             st.session_state.get("versions_reset_key", 0) + 1
         )
