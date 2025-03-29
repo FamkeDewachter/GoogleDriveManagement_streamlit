@@ -411,31 +411,27 @@ class VersionControlUI:
             for file in selected_files:
                 st.write(f"- {file['name']}")
 
-        st.write("**Warning:** This action cannot be undone.")
+        delete_permanently = st.checkbox(
+            "Delete permanently",
+            key="delete_permanently",
+            help=(
+                "Moves the selected file(s) to trash bin unless 'Delete permanently' is checked. "
+                "When 'Delete permanently' is checked, files will be erased immediately and cannot be recovered."
+            ),
+        )
 
-        col1, col2 = st.columns(2)
-
-        with col1:
-            if st.button(
-                "Delete forever",
-                key="delete_file_confirm",
-                help="This action will delete the file(s) permanently.",
-                use_container_width=True,
-            ):
-                for file in selected_files:
-                    on_delete_callback(file, delete_permanently=True)
-                st.rerun()
-
-        with col2:
-            if st.button(
-                "Move to trash",
-                key="move_to_trash_confirm",
-                help="This action will move the file(s) to trash.",
-                use_container_width=True,
-            ):
-                for file in selected_files:
-                    on_delete_callback(file, delete_permanently=False)
-                st.rerun()
+        if st.button(
+            "Delete",
+            key="move_to_trash_confirm",
+            use_container_width=True,
+            type="primary",
+            help=(
+                "Move the selected file(s) to trash, or delete them permanently."
+            ),
+        ):
+            for file in selected_files:
+                on_delete_callback(file, delete_permanently=delete_permanently)
+            st.rerun()
 
     @st.dialog("Delete Version(s)")
     def display_delete_versions_dialog(
