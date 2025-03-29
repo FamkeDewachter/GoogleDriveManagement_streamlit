@@ -3,6 +3,7 @@ import os
 from handlers.auth_handler import AuthHandler
 from views.auth_ui import AuthView
 from controllers.main_controller import MainController
+import platform
 
 
 class AuthController:
@@ -20,10 +21,10 @@ class AuthController:
         try:
             return {
                 "web": {
-                    "client_id": st.secrets.google.client_id,
-                    "client_secret": st.secrets.google.client_secret,
-                    "auth_uri": st.secrets.google.auth_uri,
-                    "token_uri": st.secrets.google.token_uri,
+                    "client_id": st.secrets.google.web.client_id,
+                    "client_secret": st.secrets.google.web.client_secret,
+                    "auth_uri": st.secrets.google.web.auth_uri,
+                    "token_uri": st.secrets.google.web.token_uri,
                     "redirect_uris": [self.get_redirect_uri()],
                 }
             }
@@ -32,32 +33,32 @@ class AuthController:
             st.stop()
 
     def is_production(self):
-        """Check if running in production"""
-        try:
-            # Debug: Print environment variables
-            st.write("### Debug Info")
-            st.write("Environment variables:", dict(os.environ))
+        """
+        Streamlit-specific check for production vs local environment.
+        """
 
-            # Check the STREAMLIT_SERVER_BASE_URL first
-            server_url = os.environ.get(
-                "STREAMLIT_SERVER_BASE_URL", ""
-            ).lower()
-            st.write(f"STREAMLIT_SERVER_BASE_URL: {server_url}")
+        # Check for Streamlit's environment variables
+        if os.environ.get("STREAMLIT_SERVER") == "true":
+            st.write("Running on Streamlit Cloud")
+            return True
 
-            # Also check the host from query params
-            query_host = st.query_params.to_dict().get("_host", "").lower()
-            st.write(f"Query _host: {query_host}")
+        # Check platform processor
+        if not platform.processor():
+            st.write("Running on a local machine")
+            return True
 
-            # Determine if production
-            is_prod = (
-                "streamlit.app" in server_url or "streamlit.app" in query_host
-            )
-            st.write(f"Is production: {is_prod}")
+        # Check if running in a common cloud environment
+        cloud_env_vars = [
+            "K_SERVICE",
+            "GAE_ENV",
+            "AWS_EXECUTION_ENV",
+            "WEBSITE_SITE_NAME",
+        ]
+        if any(var in os.environ for var in cloud_env_vars):
+            st.write("Running in a cloud environment")
+            return True
 
-            return is_prod
-        except Exception as e:
-            st.error(f"Error checking environment: {str(e)}")
-            return False
+        return False
 
     def get_redirect_uri(self):
         """Use production URI if running on Streamlit Cloud, otherwise local"""
@@ -65,11 +66,11 @@ class AuthController:
             is_prod = self.is_production()
             st.write(f"Getting redirect URI - is_production: {is_prod}")
 
-            redirect_uri = (
-                st.secrets.google.redirect_uri_production
-                if is_prod
-                else st.secrets.google.redirect_uri_local
-            )
+            # Get the list of redirect URIs from secrets
+            redirect_uris = st.secrets.google.web.redirect_uris
+
+            # Use the first URI for production, second for local (adjust as needed)
+            redirect_uri = redirect_uris[0] if is_prod else redirect_uris[1]
 
             st.write(f"Selected redirect URI: {redirect_uri}")
             return redirect_uri
