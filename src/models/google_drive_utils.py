@@ -199,6 +199,26 @@ def gds_delete_version(drive_service, file_id, version_id):
         return False
 
 
+def gds_create_folder(service, folder_name, parent_id):
+    """Creates a folder in Google Drive."""
+    print("Creating folder...")
+    folder_metadata = {
+        "name": folder_name,
+        "mimeType": "application/vnd.google-apps.folder",
+        "parents": [parent_id] if parent_id else [],
+    }
+    folder = (
+        service.files()
+        .create(
+            body=folder_metadata,
+            fields="id, name, parents",
+            supportsAllDrives=True,
+        )
+        .execute()
+    )
+    return folder
+
+
 def gds_get_subfolders_hierarchical(
     drive_service,
     drive_id,

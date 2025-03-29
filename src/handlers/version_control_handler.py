@@ -17,6 +17,7 @@ from models.google_drive_utils import (
     gds_rename_file,
     gds_update_keep_forever_version,
     gds_get_most_recent_files_recursive,
+    gds_create_folder,
 )
 from models.general_utils import (
     format_size,
@@ -68,6 +69,23 @@ class VersionControlHandler:
                 zip_file.writestr(file_name, file_bytes)
         zip_buffer.seek(0)
         return zip_buffer
+
+    def create_folder(self, folder_name, parent_id):
+        """
+        Creates a folder in Google Drive.
+
+        Args:
+            folder_name (str): Name of the folder to create
+            parent_id (str, optional): ID of parent folder. Defaults to None.
+
+        Returns:
+            tuple: (success, message)
+        """
+        try:
+            gds_create_folder(self.drive_service, folder_name, parent_id)
+            return True, f"Folder '{folder_name}' created successfully"
+        except Exception as e:
+            return False, f"Failed to create folder: {str(e)}"
 
     def delete_file(self, file_id, delete_permanently):
         """

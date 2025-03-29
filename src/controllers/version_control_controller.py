@@ -93,6 +93,14 @@ class VersionControlController:
                     ):
                         self._handle_file_upload()
 
+                    if self.ui.display_button(
+                        key="create_folder",
+                        label=":material/create_new_folder: Create Folder",
+                        use_container_width=True,
+                        help="Create a new folder",
+                    ):
+                        self._handle_folder_creation()
+
             with actions_row[1]:
                 versions_actions_container = st.container(border=self.border)
                 with versions_actions_container:
@@ -433,6 +441,39 @@ class VersionControlController:
             self.ui.display_feedback_message(
                 False,
                 f"An error occurred while uploading the file: {str(e)}",
+            )
+
+    def _handle_folder_creation(self):
+        """Handles the folder creation process."""
+        drive_id = st.session_state.selected_drive["id"]
+        project_folder_id = st.session_state.selected_project_folder["id"]
+
+        subfolders = self.handler.get_subfolders_hierarchically(
+            drive_id, project_folder_id
+        )
+
+        # Add the project folder to the list of folders to display at the top
+        folders_to_display = [
+            st.session_state.selected_project_folder
+        ] + subfolders
+
+        try:
+
+            def on_create_callback(folder_name, parent_folder):
+                with st.spinner(f"Creating folder '{folder_name}'..."):
+                    success, message = self.handler.create_folder(
+                        folder_name,
+                        parent_folder["id"],
+                    )
+                self.ui.display_feedback_message(success, message)
+
+            self.ui.display_create_folder_dialog(
+                folders_to_display, on_create_callback
+            )
+
+        except Exception as e:
+            self.ui.display_feedback_message(
+                False, f"An error occurred while creating folder: {str(e)}"
             )
 
     def _handle_version_upload(self):

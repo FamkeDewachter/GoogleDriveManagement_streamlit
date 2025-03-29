@@ -930,6 +930,40 @@ class VersionControlUI:
             label=label, key=key, value=value, height=height, help=help
         )
 
+    @st.dialog("Create New Folder")
+    def display_create_folder_dialog(
+        self, folders_to_display, on_create_callback
+    ):
+        """
+        Display a dialog for creating new folders.
+
+        Args:
+            folders_to_display (list): Available parent folders
+            on_create_callback (function): Callback when folder is created
+        """
+        folder_name = st.text_input(
+            "Folder Name",
+            key="new_folder_name",
+            help="Enter a name for the new folder",
+        )
+
+        parent_folder = self._display_folder_selectbox(
+            "new_folder_parent",
+            folders_to_display,
+        )
+
+        if st.button(
+            "Create Folder",
+            key="create_folder_confirm",
+            use_container_width=True,
+        ):
+            if not folder_name:
+                st.warning("Please enter a folder name")
+                return
+
+            on_create_callback(folder_name, parent_folder)
+            st.rerun()
+
     def display_button(
         self, key, label="Button", use_container_width=False, help=""
     ):
