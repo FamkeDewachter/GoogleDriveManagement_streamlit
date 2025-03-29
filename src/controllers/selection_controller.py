@@ -14,6 +14,26 @@ class SelectionController:
         """
         self.ui = SelectionUI()
         self.handler = SelectionHandler(drive_service, user_name)
+        self._initialize_session_state()
+
+    def _initialize_session_state(self):
+        """
+        Initializes all required session state variables with default values.
+        """
+        defaults = {
+            # Drive selection states
+            "all_drives": None,
+            "selected_drive": None,
+            # Folder selection states
+            "all_project_folders": None,
+            "searched_folders": [],
+            "last_search_term": None,
+            "selected_project_folder": None,
+        }
+
+        for key, value in defaults.items():
+            if key not in st.session_state:
+                st.session_state[key] = value
 
     def start(self):
         """
@@ -32,12 +52,12 @@ class SelectionController:
         """
         st.markdown("### Select a Shared Drive")
 
-        # Initialize drives in session state if not present
-        if "all_drives" not in st.session_state:
+        # Get drives if not in session state
+        if st.session_state.all_drives is None:
             st.session_state.all_drives = (
                 self.handler.get_all_drives_for_display()
             )
-            st.session_state.selected_drive = None
+
         if not st.session_state.all_drives:
             st.error("No shared drives found. Please check your permissions.")
             self.ui.show_message(
@@ -54,11 +74,10 @@ class SelectionController:
 
         # Clear cached folders if drive changes
         if (
-            "selected_drive" in st.session_state
+            st.session_state.selected_drive is not None
             and st.session_state.selected_drive != new_drive_selection
         ):
-            st.session_state.all_project_folders = None
-            st.session_state.selected_project_folder = None
+            self._clear_folder_session_state()
 
         st.session_state.selected_drive = new_drive_selection
 
@@ -68,10 +87,7 @@ class SelectionController:
         """
         st.markdown("### Select a Project Folder")
 
-        if (
-            "selected_drive" not in st.session_state
-            or not st.session_state.selected_drive
-        ):
+        if not st.session_state.selected_drive:
             self.ui.show_message(
                 "Please select a shared drive first.", message_type="info"
             )
@@ -86,12 +102,6 @@ class SelectionController:
             placeholder="Type folder name to search...",
         )
 
-        # Initialize folders in session state if not present
-        if "all_project_folders" not in st.session_state:
-            st.session_state.all_project_folders = None
-        if "last_search_term" not in st.session_state:
-            st.session_state.last_search_term = None
-
         # Only search when there's a search term and it has changed
         if search_term and search_term != st.session_state.last_search_term:
             folders_to_display = self.handler.get_folders_matching_search(
@@ -101,7 +111,7 @@ class SelectionController:
             st.session_state.searched_folders = folders_to_display
 
         # Use the cached results if available
-        folders_to_display = st.session_state.get("searched_folders", [])
+        folders_to_display = st.session_state.searched_folders
 
         if search_term:
             if not folders_to_display:
@@ -130,3 +140,17 @@ class SelectionController:
                 0  # Reset depth for selected folder
             )
             st.session_state.selected_project_folder = new_folder_selection
+
+    def _clear_folder_session_state(self):
+        """Clears all session state related to folder selection."""
+        keys_to_clear = [
+            "all_project_folders",
+            "searched_folders",
+            "last_search_term",
+            "selected_project_folder",
+        ]
+        for key in keys_to_clear:
+            if key in st.session_state:
+                st.session_state[key] = (
+                    None if key != "searched_folders" else []
+                )
