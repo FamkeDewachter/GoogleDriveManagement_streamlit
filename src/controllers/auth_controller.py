@@ -39,12 +39,10 @@ class AuthController:
 
         # Check for Streamlit's environment variables
         if os.environ.get("STREAMLIT_SERVER") == "true":
-            st.write("Running on Streamlit Cloud")
             return True
 
         # Check platform processor
         if not platform.processor():
-            st.write("Running on a local machine")
             return True
 
         # Check if running in a common cloud environment
@@ -55,7 +53,6 @@ class AuthController:
             "WEBSITE_SITE_NAME",
         ]
         if any(var in os.environ for var in cloud_env_vars):
-            st.write("Running in a cloud environment")
             return True
 
         return False
@@ -64,7 +61,6 @@ class AuthController:
         """Use production URI if running on Streamlit Cloud, otherwise local"""
         try:
             is_prod = self.is_production()
-            st.write(f"Getting redirect URI - is_production: {is_prod}")
 
             # Get the list of redirect URIs from secrets
             redirect_uris = st.secrets.google.web.redirect_uris
@@ -72,7 +68,6 @@ class AuthController:
             # Use the first URI for production, second for local (adjust as needed)
             redirect_uri = redirect_uris[0] if is_prod else redirect_uris[1]
 
-            st.write(f"Selected redirect URI: {redirect_uri}")
             return redirect_uri
         except Exception as e:
             st.error(f"Error getting redirect URI: {str(e)}")
@@ -95,7 +90,6 @@ class AuthController:
 
     def start(self):
         query_params = st.query_params.to_dict()
-        st.write("Current query params:", query_params)  # Debug
 
         # Handle OAuth callback
         if "code" in query_params:
@@ -110,7 +104,6 @@ class AuthController:
 
     def handle_callback(self, query_params):
         try:
-            st.write("Handling OAuth callback...")  # Debug
             self.handler.fetch_token(query_params["code"])
             creds = self.handler.get_credentials()
             user = self.handler.get_user_info(creds)
@@ -119,7 +112,6 @@ class AuthController:
                 {"credentials": creds, "user": user, "authenticated": True}
             )
 
-            st.write("Auth successful, clearing query params...")  # Debug
             st.query_params.clear()
             st.rerun()
 
@@ -145,7 +137,6 @@ class AuthController:
 
     def show_login(self):
         auth_url = self.handler.get_auth_url()
-        st.write(f"Generated auth URL: {auth_url}")  # Debug
         self.view.show_login(
             title="📁 GDrive Asset Manager",
             message="Welcome! Please log in with your Google account.",
