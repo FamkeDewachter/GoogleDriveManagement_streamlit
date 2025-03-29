@@ -250,10 +250,11 @@ class VersionControlController:
         else:
             files_for_display = st.session_state[cache_key]
 
+        reset_key = st.session_state.get("files_reset_key", 0)
         # Display the single-select grid
         selected_file = self.ui.display_dataframe(
             files_for_display,
-            key="files_table",
+            key=f"files_table_{reset_key}",
             height=300,
             is_versions=False,
         )
@@ -308,9 +309,10 @@ class VersionControlController:
             st.write("No versions found for the selected file")
             return None
 
+        reset_key = st.session_state.get("versions_reset_key", 0)
         selected_version = self.ui.display_dataframe(
             versions_for_display,
-            key="versions_table",
+            key=f"versions_table_{reset_key}",
             height=380,
             is_versions=True,
         )
@@ -383,7 +385,6 @@ class VersionControlController:
         subfolders = self.handler.get_subfolders_hierarchically(
             drive_id, project_folder_id
         )
-        search_term = st.session_state.search_term_files or None
 
         # Add the project folder to the list of folders to display at the top
         folders_to_display = [
@@ -406,10 +407,7 @@ class VersionControlController:
                         )
                     self.ui.display_feedback_message(success, message)
 
-                    st.session_state.pop(
-                        f"files_{drive_id}_{project_folder_id}_{search_term}",
-                        None,
-                    )
+                    self._clear_files_session_state()
 
             self.ui.display_upload_new_file_dialog(
                 folders_to_display, on_upload_callback
@@ -436,7 +434,6 @@ class VersionControlController:
             if st.session_state.selected_file
             else None
         )
-        selected_file_id = selected_file.get("id") if selected_file else None
         if not selected_file:
             st.warning("Please select a file to upload new versions for.")
             return
@@ -465,9 +462,7 @@ class VersionControlController:
                         )
 
                     self.ui.display_feedback_message(success, message)
-                st.session_state.pop(
-                    f"versions_for_file_{selected_file_id}", None
-                )
+                    self._clear_versions_session_state()
 
             self.ui.display_upload_new_version_dialog(
                 selected_file, on_upload_callback
@@ -506,7 +501,6 @@ class VersionControlController:
             st.warning("Please select a version to revert to.")
             return
 
-        selected_file_id = selected_file.get("id") if selected_file else None
         try:
 
             def on_revert_callback(
@@ -517,9 +511,7 @@ class VersionControlController:
                         selected_file, selected_version, description
                     )
                 self.ui.display_feedback_message(success, message)
-                st.session_state.pop(
-                    f"versions_for_file_{selected_file_id}", None
-                )
+                self._clear_versions_session_state()
 
             self.ui.display_revert_version_dialog(
                 selected_file, selected_version, on_revert_callback
@@ -551,10 +543,6 @@ class VersionControlController:
                 return
             batch_selected_files = [selected_file]
 
-        drive_id = st.session_state.selected_drive["id"]
-        project_folder_id = st.session_state.selected_project_folder["id"]
-        search_term = st.session_state.search_term_files or None
-
         try:
 
             def on_delete_callback(selected_file, delete_permanently):
@@ -563,9 +551,7 @@ class VersionControlController:
                         selected_file["id"], delete_permanently
                     )
                 self.ui.display_feedback_message(success, message)
-                st.session_state.pop(
-                    f"files_{drive_id}_{project_folder_id}_{search_term}", None
-                )
+                self._clear_files_session_state()
 
             self.ui.display_delete_file_dialog(
                 batch_selected_files, on_delete_callback
@@ -588,8 +574,6 @@ class VersionControlController:
             None
         """
         drive_id = st.session_state.selected_drive["id"]
-        project_folder_id = st.session_state.selected_project_folder["id"]
-        search_term = st.session_state.search_term_files or None
 
         trashed_files = self.handler.get_files_from_trash(drive_id)
 
@@ -633,9 +617,7 @@ class VersionControlController:
                     f"Restored {success_count} of "
                     f"{len(selected_files)} files.",
                 )
-                st.session_state.pop(
-                    f"files_{drive_id}_{project_folder_id}_{search_term}", None
-                )
+                self._clear_files_session_state()
 
             self.ui.display_restore_file_dialog(
                 trashed_files_with_folder, on_restore_callback
@@ -674,7 +656,6 @@ class VersionControlController:
         subfolders = self.handler.get_subfolders_hierarchically(
             drive_id, project_folder_id
         )
-        search_term = st.session_state.search_term_files or None
 
         # Add the project folder to the list of folders to display at the top
         folders_to_display = [
@@ -702,11 +683,7 @@ class VersionControlController:
                     True if success_count == len(selected_files) else False,
                     f"Moved {success_count} of {len(selected_files)} files.",
                 )
-                st.session_state.pop(
-                    f"files_{drive_id}_{project_folder_id}_{search_term}", None
-                )
-                if "batch_selected_files" in st.session_state:
-                    del st.session_state["batch_selected_files"]
+                self._clear_files_session_state()
 
             self.ui.display_move_file_dialog(
                 batch_selected_files, folders_to_display, on_move_callback
@@ -733,7 +710,6 @@ class VersionControlController:
             if st.session_state.selected_file
             else None
         )
-        selected_file_id = selected_file.get("id") if selected_file else None
 
         if not selected_file:
             st.warning("Please select a file to delete versions for.")
@@ -774,11 +750,7 @@ class VersionControlController:
                     f"Deleted {success_count} of "
                     f"{len(selected_versions)} versions.",
                 )
-                st.session_state.pop(
-                    f"versions_for_file_{selected_file_id}", None
-                )
-                if "batch_selected_versions" in st.session_state:
-                    del st.session_state["batch_selected_versions"]
+                self._clear_versions_session_state()
 
             self.ui.display_delete_versions_dialog(
                 batch_selected_versions, on_delete_callback
@@ -890,10 +862,6 @@ class VersionControlController:
         Returns:
             None
         """
-        drive_id = st.session_state.selected_drive["id"]
-        project_folder_id = st.session_state.selected_project_folder["id"]
-        search_term = st.session_state.search_term_files or None
-
         # Check for batch selected files first
         batch_selected_files = st.session_state.get("batch_selected_files", [])
 
@@ -924,21 +892,13 @@ class VersionControlController:
                     True if success_count == len(new_names) else False,
                     f"Renamed {success_count} of {len(new_names)} files.",
                 )
+                self._clear_files_session_state()
 
-                # Clear cache and selections
-                st.session_state.pop(
-                    f"files_{drive_id}_{project_folder_id}_{search_term}", None
-                )
-                if "batch_selected_files" in st.session_state:
-                    del st.session_state["batch_selected_files"]
-
-            # Use multi-file dialog if more than one file selected
             if len(batch_selected_files) > 1:
                 self.ui.display_rename_files_dialog(
                     batch_selected_files, on_rename_callback
                 )
             else:
-                # Use single file dialog
                 self.ui.display_rename_file_dialog(
                     batch_selected_files[0],
                     lambda file, name: on_rename_callback({file["id"]: name}),
@@ -1000,9 +960,7 @@ class VersionControlController:
                     f"Set Keep Forever to {'ON' if keep_forever else 'OFF'} "
                     f"for {success_count} versions.",
                 )
-                st.session_state.pop(
-                    f"versions_for_file_{selected_file['id']}", None
-                )
+                self._clear_versions_session_state()
 
             self.ui.display_toggle_keep_forever_dialog(
                 batch_selected_versions, on_toggle_callback
@@ -1012,3 +970,35 @@ class VersionControlController:
             self.ui.display_feedback_message(
                 False, f"Error updating versions: {str(e)}"
             )
+
+    def _clear_files_session_state(self):
+        """Clears all session state related to files."""
+        drive_id = st.session_state.selected_drive["id"]
+        project_folder_id = st.session_state.selected_project_folder["id"]
+        search_term = st.session_state.search_term_files or None
+        cache_key = f"files_{drive_id}_{project_folder_id}_{search_term}"
+
+        # Clear file-related session states
+        st.session_state.pop(cache_key, None)
+        st.session_state.pop("selected_file", None)
+        st.session_state.pop("files_for_display", None)
+        st.session_state.pop("batch_selected_files", None)
+        st.session_state.pop("search_term_files", None)
+        st.session_state.files_reset_key = (
+            st.session_state.get("files_reset_key", 0) + 1
+        )
+        self._clear_versions_session_state()
+
+    def _clear_versions_session_state(self):
+        """Clears all session state related to versions."""
+        selected_file = st.session_state.get("selected_file")
+        if selected_file:
+            cache_key = f"versions_for_file_{selected_file['id']}"
+            st.session_state.pop(cache_key, None)
+
+        # Clear version-related session states
+        st.session_state.pop("selected_version", None)
+        st.session_state.pop("batch_selected_versions", None)
+        st.session_state.versions_reset_key = (
+            st.session_state.get("versions_reset_key", 0) + 1
+        )
