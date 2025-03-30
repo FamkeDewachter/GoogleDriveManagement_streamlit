@@ -66,7 +66,7 @@ class AuthController:
             redirect_uris = st.secrets.google.web.redirect_uris
 
             # Use the first URI for production, second for local (adjust as needed)
-            redirect_uri = redirect_uris[0] if is_prod else redirect_uris[1]
+            redirect_uri = redirect_uris[1] if is_prod else redirect_uris[0]
             st.write("Current Redirect URI:", redirect_uri)
 
             return redirect_uri
