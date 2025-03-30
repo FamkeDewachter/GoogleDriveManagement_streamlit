@@ -32,12 +32,9 @@ class AuthController:
             st.stop()
 
     def is_production(self):
-        """
-        Returns True if the app is running on Streamlit Community Cloud,
-        False if running locally.
-        """
-        # Streamlit Community Cloud sets this automatically
-        return os.environ.get("HOME", "").startswith("/home/streamlit")
+        return os.environ.get(
+            "STREAMLIT_SERVER_HEADLESS"
+        ) == "1" or os.environ.get("HOME", "").startswith("/home/streamlit")
 
     def get_redirect_uri(self):
         """Use production URI if running on Streamlit Cloud, otherwise local"""
