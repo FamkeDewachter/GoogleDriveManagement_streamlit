@@ -9,18 +9,27 @@ class AuthView:
         st.title(title)
         st.markdown(message)
 
-        if st.button("🔐 Sign in with Google"):
-            # Meta refresh to redirect
-            st.markdown(
-                f"""
-                <meta http-equiv="refresh" content="0; url={auth_url}" />
-                """,
-                unsafe_allow_html=True,
-            )
-            # Fallback link
-            st.markdown(
-                f"⚠️ If you were not redirected, [click here to sign in manually]({auth_url})."
-            )
+        # Use a direct link with target="_blank" to open in new tab
+        st.markdown(
+            f"""
+            <a href="{auth_url}" target="_blank" style="
+                display: inline-block;
+                padding: 0.5em 1em;
+                color: white;
+                background-color: #4285F4;
+                border: none;
+                border-radius: 4px;
+                text-decoration: none;
+                font-weight: bold;
+            ">
+                🔐 Sign in with Google
+            </a>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "ℹ️ After signing in, you'll be redirected back to the application."
+        )
 
     @staticmethod
     def show_error(message):
