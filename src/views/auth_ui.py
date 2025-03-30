@@ -1,5 +1,6 @@
 # auth_view.py
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 class AuthView:
@@ -7,12 +8,19 @@ class AuthView:
     def show_login(title, message, auth_url):
         st.title(title)
         st.markdown(message)
-        st.button(
-            "🔐 Sign in with Google",
-            on_click=lambda: st.markdown(
-                f"[Click here if not redirected]({auth_url})"
-            ),
-        )
+
+        if st.button("🔐 Sign in with Google"):
+            # Meta refresh to redirect
+            st.markdown(
+                f"""
+                <meta http-equiv="refresh" content="0; url={auth_url}" />
+                """,
+                unsafe_allow_html=True,
+            )
+            # Fallback link
+            st.markdown(
+                f"⚠️ If you were not redirected, [click here to sign in manually]({auth_url})."
+            )
 
     @staticmethod
     def show_error(message):
