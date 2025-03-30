@@ -338,7 +338,7 @@ class CommentController:
             and filter_criteria.get("user_filter") == "all"
         ):
             # Clear filter-related session state
-            self._clear_filter_state()
+            st.session_state.filter_criteria = None
             st.session_state.filter_criteria = None
             st.rerun()
         elif filter_criteria is not None:
@@ -645,13 +645,3 @@ class CommentController:
                     )
                 else:
                     st.error("Failed to prepare download")
-
-    def _clear_filter_state(self):
-        """Clear all filter-related session state."""
-        self._clear_session_keys(
-            [
-                "comment_status_filter",
-                "comment_user_filter",
-                "comment_search_filter",
-            ]
-        )
