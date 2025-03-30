@@ -31,21 +31,11 @@ class AuthController:
             st.error(f"Error loading client config: {str(e)}")
             st.stop()
 
-    def is_production(self):
-        return os.environ.get(
-            "STREAMLIT_SERVER_HEADLESS"
-        ) == "1" or os.environ.get("HOME", "").startswith("/home/streamlit")
-
     def get_redirect_uri(self):
         """Use production URI if running on Streamlit Cloud, otherwise local"""
         try:
-            is_prod = self.is_production()
-            st.write(f"Getting redirect URI - is_production: {is_prod}")
 
-            if is_prod:
-                redirect_uri = st.secrets.google.redirect_uris[1]
-            else:
-                redirect_uri = st.secrets.google.redirect_uris[0]
+            redirect_uri = st.secrets.google.redirect_uris[1]
 
             return redirect_uri
         except Exception as e:
