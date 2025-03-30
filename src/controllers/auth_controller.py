@@ -80,7 +80,8 @@ class AuthController:
                 {"credentials": creds, "user": user, "authenticated": True}
             )
 
-            st.query_params.clear()
+            # Add auth_complete parameter before clearing
+            st.query_params["auth_complete"] = "true"
             st.rerun()
 
         except Exception as e:
