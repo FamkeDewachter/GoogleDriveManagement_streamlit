@@ -32,32 +32,13 @@ class AuthController:
             st.stop()
 
     def is_production(self):
-        """Check if running in production"""
-        try:
-            # Debug: Print environment variables
-            st.write("### Debug Info")
-            st.write("Environment variables:", dict(os.environ))
-
-            # Check the STREAMLIT_SERVER_BASE_URL first
-            server_url = os.environ.get(
-                "STREAMLIT_SERVER_BASE_URL", ""
-            ).lower()
-            st.write(f"STREAMLIT_SERVER_BASE_URL: {server_url}")
-
-            # Also check the host from query params
-            query_host = st.query_params.to_dict().get("_host", "").lower()
-            st.write(f"Query _host: {query_host}")
-
-            # Determine if production
-            is_prod = (
-                "streamlit.app" in server_url or "streamlit.app" in query_host
-            )
-            st.write(f"Is production: {is_prod}")
-
-            return is_prod
-        except Exception as e:
-            st.error(f"Error checking environment: {str(e)}")
-            return False
+        """
+        Detects if the Streamlit app is running on share.streamlit.io.
+        """
+        return (
+            "STREMLIT_SHARE" in os.environ
+            or "STREAMLIT_CLOUD_URL" in os.environ
+        )
 
     def get_redirect_uri(self):
         """Use production URI if running on Streamlit Cloud, otherwise local"""
