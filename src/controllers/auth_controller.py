@@ -67,6 +67,7 @@ class AuthController:
 
             # Use the first URI for production, second for local (adjust as needed)
             redirect_uri = redirect_uris[0] if is_prod else redirect_uris[1]
+            st.write("Current Redirect URI:", redirect_uri)
 
             return redirect_uri
         except Exception as e:
