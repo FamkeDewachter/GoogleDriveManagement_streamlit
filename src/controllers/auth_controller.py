@@ -1,5 +1,4 @@
 import streamlit as st
-import os
 from handlers.auth_handler import AuthHandler
 from views.auth_ui import AuthView
 from controllers.main_controller import MainController
@@ -59,7 +58,6 @@ class AuthController:
 
     def start(self):
         query_params = st.query_params.to_dict()
-        st.write("Current query params:", query_params)  # Debug
 
         # Handle OAuth callback
         if "code" in query_params:
@@ -74,7 +72,6 @@ class AuthController:
 
     def handle_callback(self, query_params):
         try:
-            st.write("Handling OAuth callback...")  # Debug
             self.handler.fetch_token(query_params["code"])
             creds = self.handler.get_credentials()
             user = self.handler.get_user_info(creds)
@@ -83,7 +80,6 @@ class AuthController:
                 {"credentials": creds, "user": user, "authenticated": True}
             )
 
-            st.write("Auth successful, clearing query params...")  # Debug
             st.query_params.clear()
             st.rerun()
 
@@ -109,7 +105,6 @@ class AuthController:
 
     def show_login(self):
         auth_url = self.handler.get_auth_url()
-        st.write(f"Generated auth URL: {auth_url}")  # Debug
         self.view.show_login(
             title="📁 GDrive Asset Manager",
             message="Welcome! Please log in with your Google account.",
