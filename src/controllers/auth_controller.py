@@ -45,13 +45,11 @@ class AuthController:
             is_prod = self.is_production()
             st.write(f"Getting redirect URI - is_production: {is_prod}")
 
-            redirect_uri = (
-                st.secrets.google.redirect_uri_production
-                if is_prod
-                else st.secrets.google.redirect_uri_local
-            )
+            if is_prod:
+                redirect_uri = st.secrets.google.redirect_uris[1]
+            else:
+                redirect_uri = st.secrets.google.redirect_uris[0]
 
-            st.write(f"Selected redirect URI: {redirect_uri}")
             return redirect_uri
         except Exception as e:
             st.error(f"Error getting redirect URI: {str(e)}")
