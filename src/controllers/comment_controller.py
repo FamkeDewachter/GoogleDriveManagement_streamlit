@@ -67,7 +67,8 @@ class CommentController:
     def _clear_session_keys(self, keys):
         """Clear specific keys from session state."""
         for key in keys:
-            st.session_state.pop(key, None)
+            if key in st.session_state:
+                st.session_state[key] = None
 
     def _handle_and_display_files(self):
         """Handle and display the files, with search functionality."""

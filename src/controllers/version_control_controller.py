@@ -220,7 +220,7 @@ class VersionControlController:
 
         if new_search_term != st.session_state.search_term_files:
             st.session_state.search_term_files = new_search_term
-            # Clear cache when search term changes to force refresh
+
             if cache_key in st.session_state:
                 del st.session_state[cache_key]
             # Rerun to apply the new search immediately
@@ -390,7 +390,7 @@ class VersionControlController:
                 [],
                 key="batch_versions_disabled",
                 disabled=True,
-                placeholder="Select a file to enable version selection",
+                placeholder="Select a file to enable version batch operations",
             )
 
     def _handle_file_upload(self):
@@ -1039,7 +1039,8 @@ class VersionControlController:
 
         if drive_id and project_folder_id:
             cache_key = f"files_{drive_id}_{project_folder_id}_{search_term}"
-            st.session_state.pop(cache_key, None)
+            if cache_key in st.session_state:
+                del st.session_state[cache_key]
 
         # Clear file states
         keys_to_clear = [
@@ -1049,7 +1050,8 @@ class VersionControlController:
             "search_term_files",
         ]
         for key in keys_to_clear:
-            st.session_state.pop(key, None)
+            if key in st.session_state:
+                st.session_state[key] = None
 
         # Increment reset key
         st.session_state["files_reset_key"] = (
@@ -1062,12 +1064,14 @@ class VersionControlController:
         selected_file = st.session_state.get("selected_file")
         if selected_file and selected_file.get("id"):
             cache_key = f"versions_for_file_{selected_file['id']}"
-            st.session_state.pop(cache_key, None)
+            if cache_key in st.session_state:
+                del st.session_state[cache_key]
 
         # Clear version states
         keys_to_clear = ["selected_version", "batch_selected_versions"]
         for key in keys_to_clear:
-            st.session_state.pop(key, None)
+            if key in st.session_state:
+                st.session_state[key] = None
 
         # Increment reset key
         st.session_state["versions_reset_key"] = (

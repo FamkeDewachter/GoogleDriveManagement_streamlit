@@ -73,7 +73,8 @@ class MainController:
                 "filter_criteria",
             ]
             for key in keys_to_clear:
-                st.session_state.pop(key, None)
+                if key in st.session_state:
+                    st.session_state[key] = None
 
     def _has_valid_selections(self):
         """

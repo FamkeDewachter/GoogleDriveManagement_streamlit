@@ -595,6 +595,9 @@ class VersionControlUI:
         )
 
         if is_disabled:
+            st.write("")
+            st.write("")
+            st.write("")
             st.caption(final_placeholder)
             return []
 
