@@ -974,7 +974,7 @@ def gds_revert_version(
 ):
     """
     Reverts a file to a specific revision by downloading the revision content
-    and uploading it as the current version.
+    and uploading it as the current version using in-memory handling.
 
     Args:
         service: Authenticated Google Drive API service instance.
@@ -984,38 +984,56 @@ def gds_revert_version(
         revision_name: Name of the revision to revert to.
     """
     print("Reverting file version...")
-    # Step 1: Set the path to the Downloads folder
-    download_folder = os.path.expanduser("~/Downloads")
-    file_path = os.path.join(download_folder, revision_name)
 
-    # Step 2: Download the specific revision
     try:
+        # Step 1: Get revision metadata to determine MIME type
+        revision_meta = (
+            service.revisions()
+            .get(fileId=file_id, revisionId=revision_id, fields="mimeType")
+            .execute()
+        )
+        mime_type = revision_meta.get("mimeType", "application/octet-stream")
+
+        # Step 2: Download the specific revision to memory
         request = service.revisions().get_media(
             fileId=file_id,
             revisionId=revision_id,
         )
-        file_to_download = request.execute()
+        file_buffer = io.BytesIO()
+        downloader = MediaIoBaseDownload(file_buffer, request)
 
-        with open(file_path, "wb") as temp_file:
-            temp_file.write(file_to_download)
-        print(f"File downloaded to {file_path}")
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
 
-    except Exception as error:
-        st.error(f"An error occurred: {error}")
-        print(f"An error occurred while downloading the file: {error}")
-        return False
+        file_buffer.seek(0)  # Rewind the buffer
 
-    # Step 3: Upload the downloaded file as the current version
-    gds_upload_version(service, file_id, file_name, file_path)
+        # Step 3: Upload the downloaded content as the current version
+        # Temporarily rename the file to match the version name
+        gds_rename_file(service, file_id, revision_name)
 
-    # Step 4: Delete the temporary downloaded file
-    try:
-        os.remove(file_path)
-        print(f"File {file_path} deleted.")
+        # Upload the new version with correct MIME type
+        media = MediaIoBaseUpload(file_buffer, mimetype=mime_type)
+
+        updated_file = (
+            service.files()
+            .update(
+                fileId=file_id,
+                media_body=media,
+                fields="id, name",
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
+
+        # Restore the original file name
+        gds_rename_file(service, file_id, file_name)
+
+        print(f"Successfully reverted to version {revision_name}")
         return True
 
     except Exception as error:
-        print(f"An error occurred while deleting the file locally: {error}")
+        print(f"An error occurred while reverting version: {error}")
         return False
 
 
