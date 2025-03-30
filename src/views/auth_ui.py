@@ -8,23 +8,6 @@ class AuthView:
         st.title(title)
         st.markdown(message)
 
-        # Add JavaScript to close the tab after auth completes
-        st.markdown(
-            """
-        <script>
-        function checkAuthStatus() {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('auth_complete')) {
-                window.close();
-            }
-        }
-        // Check every second
-        setInterval(checkAuthStatus, 1000);
-        </script>
-        """,
-            unsafe_allow_html=True,
-        )
-
         # Use a direct link with target="_blank" to open in new tab
         st.markdown(
             f"""
