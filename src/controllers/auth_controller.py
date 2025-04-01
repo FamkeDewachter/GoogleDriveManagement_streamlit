@@ -3,6 +3,9 @@ from handlers.auth_handler import AuthHandler
 from views.auth_ui import AuthView
 from controllers.main_controller import MainController
 
+# For local testing, set to True
+IS_LOCAL = False
+
 
 class AuthController:
     def __init__(self):
@@ -33,8 +36,10 @@ class AuthController:
     def get_redirect_uri(self):
         """Use production URI if running on Streamlit Cloud, otherwise local"""
         try:
-
-            redirect_uri = st.secrets.google.redirect_uris[1]
+            if IS_LOCAL:
+                redirect_uri = st.secrets.google.redirect_uris[0]
+            else:
+                redirect_uri = st.secrets.google.redirect_uris[1]
 
             return redirect_uri
         except Exception as e:

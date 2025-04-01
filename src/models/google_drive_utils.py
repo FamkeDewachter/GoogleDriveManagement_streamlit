@@ -975,6 +975,7 @@ def gds_revert_version(
     """
     Reverts a file to a specific revision by downloading the revision content
     and uploading it as the current version using in-memory handling.
+    Preserves the keepForever status from the original version.
 
     Args:
         service: Authenticated Google Drive API service instance.
@@ -986,13 +987,18 @@ def gds_revert_version(
     print("Reverting file version...")
 
     try:
-        # Step 1: Get revision metadata to determine MIME type
+        # Step 1: Get revision metadata to determine MIME type and keepForever status
         revision_meta = (
             service.revisions()
-            .get(fileId=file_id, revisionId=revision_id, fields="mimeType")
+            .get(
+                fileId=file_id,
+                revisionId=revision_id,
+                fields="mimeType,keepForever",
+            )
             .execute()
         )
         mime_type = revision_meta.get("mimeType", "application/octet-stream")
+        keep_forever = revision_meta.get("keepForever", False)
 
         # Step 2: Download the specific revision to memory
         request = service.revisions().get_media(
@@ -1020,11 +1026,28 @@ def gds_revert_version(
             .update(
                 fileId=file_id,
                 media_body=media,
-                fields="id, name",
+                fields="id,name",
                 supportsAllDrives=True,
             )
             .execute()
         )
+
+        # Step 4: Get the latest revision ID (the one we just created)
+        revisions = (
+            service.revisions()
+            .list(fileId=file_id, fields="revisions(id)")
+            .execute()
+            .get("revisions", [])
+        )
+
+        if revisions:
+            new_revision_id = revisions[-1]["id"]
+            # Set keepForever status to match the original version
+            service.revisions().update(
+                fileId=file_id,
+                revisionId=new_revision_id,
+                body={"keepForever": keep_forever},
+            ).execute()
 
         # Restore the original file name
         gds_rename_file(service, file_id, file_name)
