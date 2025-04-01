@@ -119,7 +119,7 @@ class VersionControlController:
                             key="revert_version",
                             label=":material/history: Revert to version",
                             use_container_width=True,
-                            help="Revert the selected file to a previous version",
+                            help="Creates a new version with the same content as the selected version",
                         ):
                             self._handle_version_revert()
                     else:
