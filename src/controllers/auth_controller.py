@@ -89,6 +89,9 @@ class AuthController:
             st.rerun()
 
         except Exception as e:
+            st.error(f"Full error details: {str(e)}")
+            if hasattr(e, "response"):
+                st.error(f"Response content: {e.response.text}")
             self.view.show_error(f"Authentication failed: {str(e)}")
             self.reset_session()
 
